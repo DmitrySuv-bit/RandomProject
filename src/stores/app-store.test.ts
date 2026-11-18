@@ -261,7 +261,7 @@ describe('результат', () => {
     expect(useAppStore.getState().settings.teamNames).toEqual(['', ''])
   })
 
-  it('generateTeamNames заполняет только пустые слоты и синхронизирует результат', () => {
+  it('generateTeamNames перегенерирует все названия, включая кастомные, и синхронизирует результат', () => {
     useAppStore.getState().setTeamCount(3)
     useAppStore.getState().setTeamName(1, 'Орлы')
     useAppStore.getState().setResult({
@@ -277,9 +277,8 @@ describe('результат', () => {
     useAppStore.getState().generateTeamNames()
 
     const names = useAppStore.getState().settings.teamNames
-    expect(names[1]).toBe('Орлы')
-    expect(names[0]).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
-    expect(names[2]).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    // все три слота перегенерированы, включая бывший кастомный «Орлы»
+    for (const name of names) expect(name).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
     expect(new Set(names).size).toBe(3)
 
     const resultNames = useAppStore.getState().result?.teams.map((t) => t.name)

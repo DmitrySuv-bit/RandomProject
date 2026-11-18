@@ -63,7 +63,7 @@ interface AppState {
   setTeamCount: (count: number) => void
   /** Задаёт название команды по индексу (пустая строка — сгенерированное) */
   setTeamName: (index: number, name: string) => void
-  /** Заполняет пустые названия команд сгенерированными, кастомные не трогает */
+  /** Перегенерирует названия всех команд (кастомные тоже заменяются) */
   generateTeamNames: () => void
   setSizingMode: (mode: SizingMode) => void
   setSizeLimits: (min: number, max: number) => void
@@ -266,18 +266,12 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      /** Заполняет пустые названия сгенерированными, кастомные не трогает */
+      /** Перегенерирует названия всех команд, включая кастомные */
       generateTeamNames: () => {
         set((state) => {
           const used = new Set<string>()
           const after: string[] = []
           for (let i = 0; i < state.settings.teamCount; i++) {
-            const custom = state.settings.teamNames[i] ?? ''
-            if (custom.trim()) {
-              used.add(custom.trim())
-              after.push(custom)
-              continue
-            }
             const generated = generateTeamName(used) ?? ''
             if (generated) used.add(generated)
             after.push(generated)

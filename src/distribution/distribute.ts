@@ -1,4 +1,5 @@
 import { uid } from '@/domain/id'
+import { distributionSignature } from '@/domain/distribution-signature'
 import { generateTeamName } from '@/domain/team-names'
 import type { DistributionResult, Participant, Settings } from '@/domain/types'
 import { buildClusters } from './clusters'
@@ -72,5 +73,5 @@ export function distribute(
   })
 
   const report = computeReport(teams, participants, settings, clustering.impossibleRules)
-  return { teams, report, createdAt: Date.now() }
+  return { teams, report, createdAt: Date.now(), sourceSignature: distributionSignature(participants, settings) }
 }

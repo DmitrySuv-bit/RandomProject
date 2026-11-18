@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { distribute } from './distribute'
+import { distributionSignature } from '@/domain/distribution-signature'
 import { uid } from '@/domain/id'
 import type { Position } from '@/domain/positions'
 import type { LevelCapRule, Participant, Settings } from '@/domain/types'
@@ -315,5 +316,43 @@ describe('distribute — отчёт', () => {
     })
 
     expect(result.teams.map((t) => t.name)).toEqual(['Альфа', 'Бета'])
+  })
+})
+
+describe('distribute — подпись входа', () => {
+  it('подпись совпадает для того же входа и меняется при смене весов', () => {
+    const participants = makeParticipants(Array.from({ length: 6 }, (_, i) => [`У${i}`, 3] as const))
+    const settings = makeSettings({ teamCount: 2 })
+    const result = distribute(participants, settings, { seed: SEED })
+
+    expect(result.sourceSignature).toBe(distributionSignature(participants, settings))
+
+    const changed = makeSettings({ teamCount: 2, weights: { ...settings.weights, 'senior-plus': 9 } })
+    expect(result.sourceSignature).not.toBe(distributionSignature(participants, changed))
+  })
+
+  it('переименование команд (teamNames) не меняет подпись', () => {
+    const participants = makeParticipants(Array.from({ length: 6 }, (_, i) => [`У${i}`, 3] as const))
+    const result = distribute(
+      participants,
+      makeSettings({ teamCount: 2, teamNames: ['Альфа', 'Бета'] }),
+      { seed: SEED },
+    )
+
+    expect(result.sourceSignature).toBe(
+      distributionSignature(participants, makeSettings({ teamCount: 2 })),
+    )
+  })
+
+  it('добавление или смена должности участника меняет подпись', () => {
+    const participants = makeParticipants(Array.from({ length: 4 }, (_, i) => [`У${i}`, 3] as const))
+    const settings = makeSettings({ teamCount: 2 })
+    const result = distribute(participants, settings, { seed: SEED })
+
+    const grown = [...participants, makeParticipants([['Новый', 2]])[0]!]
+    expect(result.sourceSignature).not.toBe(distributionSignature(grown, settings))
+
+    const repositioned = participants.map((p, i) => (i === 0 ? { ...p, position: 'senior-plus' as const } : p))
+    expect(result.sourceSignature).not.toBe(distributionSignature(repositioned, settings))
   })
 })

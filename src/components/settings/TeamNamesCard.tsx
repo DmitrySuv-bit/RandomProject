@@ -13,7 +13,8 @@ export function TeamNamesCard() {
         <div>
           <h3 className="text-base font-semibold">Названия команд</h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Пустые поля получают случайное название при распределении — или сгенерируйте сразу.
+            Пустые поля получают случайное название при распределении; кнопка перегенерирует все
+            названия сразу.
           </p>
         </div>
         <Button onClick={generateTeamNames} disabled={teamCount === 0}>

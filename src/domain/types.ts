@@ -109,4 +109,6 @@ export interface DistributionResult {
   teams: Team[]
   report: Report
   createdAt: number
+  /** Подпись входа на момент распределения; не совпадает с текущей — настройки/участники менялись */
+  sourceSignature?: string
 }

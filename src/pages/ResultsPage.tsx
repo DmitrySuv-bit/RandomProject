@@ -3,6 +3,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import { computeReport } from '@/distribution/report'
 import { distribute } from '@/distribution/distribute'
 import { validateDistributionInput, type DistributionIssue } from '@/distribution/validate'
+import { distributionSignature } from '@/domain/distribution-signature'
 import { csvFileName, downloadCsv, teamsToCsv } from '@/domain/export'
 import { useAppStore } from '@/stores/app-store'
 import { useUiStore } from '@/stores/ui-store'
@@ -23,6 +24,12 @@ export function ResultsPage() {
     () => validateDistributionInput(participants, settings),
     [participants, settings],
   )
+
+  // Подпись текущего входа: не совпала с сохранённой в результате — настройки/участники менялись
+  const staleResult = useMemo(() => {
+    if (!result) return false
+    return result.sourceSignature !== distributionSignature(participants, settings)
+  }, [result, participants, settings])
 
   // Отчёт всегда пересчитывается от текущих команд — ручные переносы обновляют его мгновенно
   const report = useMemo(
@@ -69,6 +76,19 @@ export function ResultsPage() {
 
       {result && report ? (
         <>
+          {staleResult && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+              <p className="font-medium">⚠ Настройки или участники изменились</p>
+              <p className="mt-1">
+                Команды ниже рассчитаны по старым параметрам — перераспределите, чтобы обновить
+                состав.
+              </p>
+              <Button variant="primary" className="mt-2" onClick={handleDistribute}>
+                🎲 Перераспределить
+              </Button>
+            </div>
+          )}
+
           <ReportPanel report={report} teams={result.teams} onRenameTeam={renameTeam} />
 
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
