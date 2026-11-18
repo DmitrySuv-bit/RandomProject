@@ -6,6 +6,7 @@ import { DEFAULT_WEIGHTS, type Position } from '@/domain/positions'
 import type {
   DistributionResult,
   Participant,
+  ParticipantInput,
   Rule,
   RuleInput,
   Settings,
@@ -28,12 +29,6 @@ const WEIGHT_LIMITS = { min: 0, max: 99 } as const
 
 const clamp = (value: number, limits: { min: number; max: number }): number =>
   Math.min(limits.max, Math.max(limits.min, Math.round(value)))
-
-export interface ParticipantInput {
-  fullName: string
-  position: Position
-  nickname?: string
-}
 
 interface AppState {
   participants: Participant[]

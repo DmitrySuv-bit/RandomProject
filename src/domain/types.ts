@@ -11,6 +11,13 @@ export interface Participant {
   nickname: string
 }
 
+/** Данные для добавления участника */
+export interface ParticipantInput {
+  fullName: string
+  position: Position
+  nickname?: string
+}
+
 /** Режим определения размера команд */
 export type SizingMode = 'even' | 'limits'
 
