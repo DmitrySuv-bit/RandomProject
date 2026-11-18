@@ -46,6 +46,22 @@ npm test          # vitest run
 npm run lint      # oxlint
 ```
 
+## Деплой на GitHub Pages
+
+Репозиторий публикуется автоматически воркфлоу `.github/workflows/deploy.yml`:
+пуш в `master` → `npm ci && npm run build -- --base=/RandomProject/` → деплой.
+
+Адрес: **<https://dmitrysuv-bit.github.io/RandomProject/>**
+
+Один раз после первого пуша: Settings → Pages → Source → **GitHub Actions**.
+
+`base` передаётся флагом только в CI, поэтому локальный `npm run dev` и `preview`
+работают из корня `localhost` без префикса. Если нужен ручной деплой веткой
+`gh-pages` — собирайте с тем же флагом: `npm run build -- --base=/RandomProject/`.
+
+`localStorage` привязан к домену: участники с `localhost` на задеплоенном сайте
+сами не перенесутся — воспользуйтесь экспортом/импортом CSV.
+
 ## Структура
 
 ```
