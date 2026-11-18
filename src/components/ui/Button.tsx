@@ -20,7 +20,7 @@ export function Button({ variant = 'secondary', className = '', type = 'button',
   return (
     <button
       type={type}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${VARIANT_STYLES[variant]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 disabled:cursor-not-allowed ${VARIANT_STYLES[variant]} ${className}`}
       {...rest}
     />
   )

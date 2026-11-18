@@ -1,32 +1,91 @@
-# React + TypeScript + Vite
+# 🎲 Рандомайзер команд
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Веб-приложение для формирования сбалансированных команд из списка сотрудников.
+Работает полностью в браузере, без бэкенда: данные сохраняются в `localStorage`.
 
-Currently, two official plugins are available:
+## Возможности
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Участники**: ФИО и должность (`Junior minus` … `Senior plus`), каждому автоматически
+  выдаётся уникальное прозвище-животное («Дикая утка», «Задумчивый медведь»)
+- **Импорт из CSV**: `ФИО;Должность` построчно, разделитель `;` или `,`, заголовок необязателен,
+  должности распознаются толерантно (`junior+`, `джун минус`, `senior −` …)
+- **Настройки**: количество команд, режим размера («поровну» или границы min–max),
+  настраиваемые веса должностей (по умолчанию 1–6)
+- **Правила размещения**: пары «вместе», пары «раздельно», лимит должности в команде;
+  правила можно включать/выключать
+- **Распределение**: случайный snake-draft + hill-climbing оптимизация — команды
+  получаются максимально близкими по суммарному весу; невыполнимые правила честно
+  помечаются в отчёте с причинами (best effort)
+- **Ручные переносы**: перетаскивание участников между командами — баланс и отчёт
+  пересчитываются мгновенно
+- **Отчёт**: разброс весов, баланс каждой команды, статус каждого правила
+- **Экспорт CSV**: `Команда;ФИО;Должность;Прозвище;Вес` (UTF-8 + BOM, открывается в Excel)
+- Светлая и тёмная темы (по системной настройке, выбор запоминается)
 
-## React Compiler
+## Стек
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [Vite](https://vite.dev/) 8, [React](https://react.dev/) 19, TypeScript 7
+- [Tailwind CSS](https://tailwindcss.com/) 4
+- [Zustand](https://zustand.docs.pmnd.rs/) (persist → localStorage)
+- [@dnd-kit](https://dndkit.com/) — drag & drop
+- [Vitest](https://vitest.dev/) — 83 unit-теста, oxlint — линтер
 
-## Expanding the Oxlint configuration
+## Запуск
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev       # http://localhost:5173
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Прочие команды:
+
+```bash
+npm run build     # tsc -b && vite build → dist/
+npm run preview   # предпросмотр продакшн-сборки
+npm test          # vitest run
+npm run lint      # oxlint
+```
+
+## Структура
+
+```
+src/
+├── components/    # UI: layout, ui-примитивы, participants/, settings/, results/
+├── domain/        # чистая логика: должности, типы, прозвища, CSV, правила
+├── distribution/  # алгоритм: валидация, кластеризация, драфт, оптимизация, отчёт
+├── pages/         # вкладки: Участники / Настройки / Результат
+├── stores/        # Zustand: app-store (persist), theme-store, ui-store
+└── test/          # setup для unit-тестов
+```
+
+## Алгоритм распределения
+
+1. **Валидация** входа (участников ≥ команд, вместимость min–max)
+2. **Кластеризация** правил «вместе» (union-find); заведомо невыполнимые правила
+   (группа больше команды, «раздельно» внутри группы, лимит внутри группы)
+   помечаются и исключаются из оптимизации
+3. **Snake-draft** с шумом по убыванию веса — случайное, но ровное начало
+4. **Hill climbing**: переносы и обмены участников минимизируют штраф
+   (нарушения правил и лимитов доминируют над разбросом весов); 4 рестарта,
+   побеждает лучший результат
+5. **Отчёт** по каждому правилу с причиной нарушения + метрики баланса
+
+Детерминизм для тестов — фиксированный seed (`distribute(participants, settings, { seed })`).
+
+## Хранение данных
+
+Ключи в `localStorage`:
+
+- `random-team-data` — участники, настройки, правила, последний результат
+- `random-team-theme` — выбранная тема
+
+Полный сброс — кнопка «Сбросить все данные» на вкладке «Настройки».
+
+## Известные особенности
+
+- `npm audit` сообщает о ReDoS-уязвимости в `picomatch` — это транзитивная
+  зависимость dev-инструментов (vite/vitest, глоб файлов) и не попадает в
+  продакшн-сборку. Исправление требует даунгрейда vite (`npm audit fix --force`).
+- Экспорт CSV не экранирует по RFC ячейки без специальных символов — Excel и
+  LibreOffice читают файл корректно (проверено), спецсимволы (`;`, `"`, переводы
+  строк) экранируются.
