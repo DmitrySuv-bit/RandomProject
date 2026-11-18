@@ -31,10 +31,11 @@ export function ReportPanel({ report, teams, onRenameTeam }: ReportPanelProps) {
               {report.spread}
             </span>
           </p>
-          <table className="mt-3 w-full text-sm">
+          {/* table-fixed: ширины колонок не зависят от содержимого — редактирование не двигает таблицу */}
+          <table className="mt-3 w-full table-fixed text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-                <th scope="col" className="pb-1.5 font-medium">Команда</th>
+                <th scope="col" className="w-[45%] pb-1.5 font-medium">Команда</th>
                 <th scope="col" className="pb-1.5 font-medium">Люди</th>
                 <th scope="col" className="pb-1.5 font-medium">Σ вес</th>
                 <th scope="col" className="pb-1.5 font-medium">⌀ вес</th>
@@ -51,6 +52,8 @@ export function ReportPanel({ report, teams, onRenameTeam }: ReportPanelProps) {
                       <EditableTeamName
                         value={nameOf(balance.teamId)}
                         onRename={onRenameTeam ? (name) => onRenameTeam(balance.teamId, name) : undefined}
+                        /* инпут выше текста на рамку+паддинги — компенсируем, чтобы строка не прыгала */
+                        inputClassName="-my-[3px]"
                       />
                     </span>
                   </td>

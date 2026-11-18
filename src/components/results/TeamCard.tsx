@@ -37,7 +37,8 @@ export function TeamCard({ team, index, balance, participantsById, weights, onRe
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <TeamBadge index={index} className="h-7 w-7 text-sm shadow-sm" />
           <h3 className="min-w-0 flex-1 text-lg font-bold leading-7 text-slate-900 dark:text-white">
-            <EditableTeamName value={team.name} onRename={onRename} />
+            {/* инпут выше текста на рамку+паддинги — компенсируем, чтобы карточка не прыгала */}
+            <EditableTeamName value={team.name} onRename={onRename} inputClassName="-my-[3px]" />
           </h3>
         </div>
         <span
