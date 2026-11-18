@@ -3,6 +3,7 @@ import { useUiStore } from '@/stores/ui-store'
 import { Button } from '@/components/ui/Button'
 import { RuleBuilder } from '@/components/settings/RuleBuilder'
 import { RulesList } from '@/components/settings/RulesList'
+import { TeamNamesCard } from '@/components/settings/TeamNamesCard'
 import { TeamSettingsCard } from '@/components/settings/TeamSettingsCard'
 import { WeightsCard } from '@/components/settings/WeightsCard'
 
@@ -26,6 +27,7 @@ export function SettingsPage() {
       </div>
 
       <TeamSettingsCard />
+      <TeamNamesCard />
       <WeightsCard />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">

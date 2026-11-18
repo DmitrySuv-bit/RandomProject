@@ -284,4 +284,24 @@ describe('distribute — отчёт', () => {
     expect(new Set(result.teams.map((t) => t.id)).size).toBe(3)
     expect(result.createdAt).toBeGreaterThan(0)
   })
+
+  it('использует пользовательские названия; пустые и пробельные заменяются на «Команда N»', () => {
+    const participants = makeParticipants(Array.from({ length: 6 }, (_, i) => [`У${i}`, 3] as const))
+    const result = distribute(
+      participants,
+      makeSettings({ teamCount: 3, teamNames: ['Красные', '   ', 'Синие киты'] }),
+      { seed: SEED },
+    )
+
+    expect(result.teams.map((t) => t.name)).toEqual(['Красные', 'Команда 2', 'Синие киты'])
+  })
+
+  it('названия из настроек попадают в отчёт по балансу', () => {
+    const participants = makeParticipants(Array.from({ length: 4 }, (_, i) => [`У${i}`, 3] as const))
+    const result = distribute(participants, makeSettings({ teamCount: 2, teamNames: ['Альфа', 'Бета'] }), {
+      seed: SEED,
+    })
+
+    expect(result.teams.map((t) => t.name)).toEqual(['Альфа', 'Бета'])
+  })
 })

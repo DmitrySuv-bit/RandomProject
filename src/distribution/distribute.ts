@@ -1,4 +1,5 @@
 import { uid } from '@/domain/id'
+import { teamDisplayName } from '@/domain/teams'
 import type { DistributionResult, Participant, Settings } from '@/domain/types'
 import { buildClusters } from './clusters'
 import { draftSolution } from './draft'
@@ -63,7 +64,7 @@ export function distribute(
 
   const teams = bestTeams!.map((memberIds, index) => ({
     id: uid(),
-    name: `Команда ${index + 1}`,
+    name: teamDisplayName(settings.teamNames[index], index),
     memberIds,
   }))
 

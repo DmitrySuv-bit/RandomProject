@@ -16,6 +16,7 @@ export function ResultsPage() {
   const result = useAppStore((s) => s.result)
   const setResult = useAppStore((s) => s.setResult)
   const moveParticipant = useAppStore((s) => s.moveParticipant)
+  const renameTeam = useAppStore((s) => s.renameTeam)
   const setActiveTab = useUiStore((s) => s.setActiveTab)
 
   const issues = useMemo(
@@ -79,6 +80,7 @@ export function ResultsPage() {
                   balance={report.balance.find((b) => b.teamId === team.id)}
                   participantsById={byId}
                   weights={settings.weights}
+                  onRename={(name) => renameTeam(team.id, name)}
                 />
               ))}
             </div>

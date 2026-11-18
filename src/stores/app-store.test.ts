@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS, useAppStore } from './app-store'
 
 function resetState() {
@@ -132,6 +132,40 @@ describe('настройки', () => {
     expect(useAppStore.getState().settings.teamCount).toBe(1)
   })
 
+  it('setTeamName задаёт название и дополняет массив до количества команд', () => {
+    useAppStore.getState().setTeamCount(3)
+    useAppStore.getState().setTeamName(2, 'Красные')
+    expect(useAppStore.getState().settings.teamNames).toEqual(['', '', 'Красные'])
+    useAppStore.getState().setTeamName(0, 'Синие')
+    expect(useAppStore.getState().settings.teamNames).toEqual(['Синие', '', 'Красные'])
+  })
+
+  it('setTeamName переименовывает команду в готовом результате на лету', () => {
+    const a = useAppStore.getState().addParticipant({ fullName: 'А', position: 'junior-minus' })!
+    useAppStore.getState().setResult({
+      teams: [
+        { id: 't1', name: 'Команда 1', memberIds: [a] },
+        { id: 't2', name: 'Команда 2', memberIds: [] },
+      ],
+      report: { ruleResults: [], balance: [], spread: 0 },
+      createdAt: 0,
+    })
+
+    useAppStore.getState().setTeamName(1, 'Зелёные')
+
+    expect(useAppStore.getState().result?.teams[1]!.name).toBe('Зелёные')
+    expect(useAppStore.getState().result?.teams[0]!.name).toBe('Команда 1')
+  })
+
+  it('setTeamCount синхронизирует длину массива названий', () => {
+    useAppStore.getState().setTeamCount(3)
+    useAppStore.getState().setTeamName(1, 'Красные')
+    useAppStore.getState().setTeamCount(2)
+    expect(useAppStore.getState().settings.teamNames).toEqual(['', 'Красные'])
+    useAppStore.getState().setTeamCount(3)
+    expect(useAppStore.getState().settings.teamNames).toEqual(['', 'Красные', ''])
+  })
+
   it('setSizeLimits сортирует пару и ограничивает', () => {
     useAppStore.getState().setSizeLimits(10, 2)
     const { minSize, maxSize } = useAppStore.getState().settings
@@ -195,6 +229,47 @@ describe('результат', () => {
     const a = useAppStore.getState().addParticipant({ fullName: 'А', position: 'junior-minus' })!
     expect(() => useAppStore.getState().moveParticipant(a, 't1')).not.toThrow()
   })
+
+  it('renameTeam переименовывает команду в результате и запоминает название в настройках', () => {
+    useAppStore.getState().setResult({
+      teams: [
+        { id: 't1', name: 'Команда 1', memberIds: [] },
+        { id: 't2', name: 'Команда 2', memberIds: [] },
+      ],
+      report: { ruleResults: [], balance: [], spread: 0 },
+      createdAt: 0,
+    })
+
+    useAppStore.getState().renameTeam('t2', '  Синие киты  ')
+
+    expect(useAppStore.getState().result?.teams[1]!.name).toBe('Синие киты')
+    expect(useAppStore.getState().settings.teamNames).toEqual(['', 'Синие киты'])
+  })
+
+  it('renameTeam с пустым именем возвращает стандартное «Команда N»', () => {
+    useAppStore.getState().setResult({
+      teams: [{ id: 't1', name: 'Старое', memberIds: [] }],
+      report: { ruleResults: [], balance: [], spread: 0 },
+      createdAt: 0,
+    })
+
+    useAppStore.getState().renameTeam('t1', '   ')
+
+    expect(useAppStore.getState().result?.teams[0]!.name).toBe('Команда 1')
+    // массив названий всегда дополнен до количества команд (дефолт 2)
+    expect(useAppStore.getState().settings.teamNames).toEqual(['', ''])
+  })
+
+  it('renameTeam игнорирует неизвестную команду', () => {
+    useAppStore.getState().setResult({
+      teams: [{ id: 't1', name: 'Команда 1', memberIds: [] }],
+      report: { ruleResults: [], balance: [], spread: 0 },
+      createdAt: 0,
+    })
+
+    expect(() => useAppStore.getState().renameTeam('ghost', 'X')).not.toThrow()
+    expect(useAppStore.getState().result?.teams[0]!.name).toBe('Команда 1')
+  })
 })
 
 describe('автосохранение', () => {
@@ -203,6 +278,27 @@ describe('автосохранение', () => {
     const raw = localStorage.getItem('random-team-data')
     expect(raw).toBeTruthy()
     expect(JSON.parse(raw!).state.participants).toHaveLength(1)
+  })
+
+  it('старые данные без teamNames получают массив названий по умолчанию', async () => {
+    // сохранённые настройки времён до появления teamNames (version 1)
+    localStorage.setItem(
+      'random-team-data',
+      JSON.stringify({
+        state: {
+          participants: [],
+          settings: { ...structuredClone(DEFAULT_SETTINGS), teamNames: undefined },
+          result: null,
+        },
+      }),
+    )
+
+    vi.resetModules()
+    const { useAppStore: freshStore } = await import('./app-store')
+
+    expect(freshStore.getState().settings.teamCount).toBe(DEFAULT_SETTINGS.teamCount)
+    expect(Array.isArray(freshStore.getState().settings.teamNames)).toBe(true)
+    expect(freshStore.getState().settings.teamNames).toEqual([])
   })
 })
 

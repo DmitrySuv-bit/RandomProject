@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { uid } from '@/domain/id'
 import { generateNickname } from '@/domain/nicknames'
 import { DEFAULT_WEIGHTS, type Position } from '@/domain/positions'
+import { teamDisplayName } from '@/domain/teams'
 import type {
   DistributionResult,
   Participant,
@@ -15,6 +16,7 @@ import type {
 
 export const DEFAULT_SETTINGS: Settings = {
   teamCount: 2,
+  teamNames: [],
   sizingMode: 'even',
   minSize: 3,
   maxSize: 10,
@@ -29,6 +31,11 @@ const WEIGHT_LIMITS = { min: 0, max: 99 } as const
 
 const clamp = (value: number, limits: { min: number; max: number }): number =>
   Math.min(limits.max, Math.max(limits.min, Math.round(value)))
+
+/** Длина массива названий должна совпадать с количеством команд: дополняем и обрезаем */
+function normalizeTeamNames(names: readonly string[], teamCount: number): string[] {
+  return Array.from({ length: teamCount }, (_, i) => names[i] ?? '')
+}
 
 interface AppState {
   participants: Participant[]
@@ -53,6 +60,8 @@ interface AppState {
 
   /* Настройки */
   setTeamCount: (count: number) => void
+  /** Задаёт название команды по индексу (пустая строка — «Команда N») */
+  setTeamName: (index: number, name: string) => void
   setSizingMode: (mode: SizingMode) => void
   setSizeLimits: (min: number, max: number) => void
   setWeight: (position: Position, weight: number) => void
@@ -68,6 +77,8 @@ interface AppState {
   clearResult: () => void
   /** Ручной перенос участника в другую команду (баланс пересчитывается на лету) */
   moveParticipant: (participantId: string, toTeamId: string) => void
+  /** Переименование команды в готовом результате (запоминается в настройках) */
+  renameTeam: (teamId: string, name: string) => void
 
   /** Полный сброс данных к дефолтам */
   resetAll: () => void
@@ -199,9 +210,38 @@ export const useAppStore = create<AppState>()(
       },
 
       setTeamCount: (count) => {
+        const teamCount = clamp(count, TEAM_COUNT_LIMITS)
         set((state) => ({
-          settings: { ...state.settings, teamCount: clamp(count, TEAM_COUNT_LIMITS) },
+          settings: {
+            ...state.settings,
+            teamCount,
+            teamNames: normalizeTeamNames(state.settings.teamNames, teamCount),
+          },
         }))
+      },
+
+      setTeamName: (index, name) => {
+        if (index < 0 || index >= TEAM_COUNT_LIMITS.max) return
+        set((state) => {
+          // массив дополняем до размера, покрывающего и индекс, и teamCount
+          const teamNames = normalizeTeamNames(
+            Object.assign([...state.settings.teamNames], { [index]: name }),
+            Math.max(state.settings.teamCount, index + 1),
+          )
+          return {
+            settings: { ...state.settings, teamNames },
+            // готовый результат переименовываем на лету
+            result:
+              state.result && index < state.result.teams.length
+                ? {
+                    ...state.result,
+                    teams: state.result.teams.map((team, i) =>
+                      i === index ? { ...team, name: teamDisplayName(name, index) } : team,
+                    ),
+                  }
+                : state.result,
+          }
+        })
       },
 
       setSizingMode: (mode) => {
@@ -276,6 +316,30 @@ export const useAppStore = create<AppState>()(
         })
       },
 
+      renameTeam: (teamId, name) => {
+        set((state) => {
+          if (!state.result) return state
+          const index = state.result.teams.findIndex((team) => team.id === teamId)
+          if (index === -1) return state
+          const trimmed = name.trim()
+          return {
+            settings: {
+              ...state.settings,
+              teamNames: normalizeTeamNames(
+                Object.assign([...state.settings.teamNames], { [index]: trimmed }),
+                Math.max(state.settings.teamCount, index + 1),
+              ),
+            },
+            result: {
+              ...state.result,
+              teams: state.result.teams.map((team) =>
+                team.id === teamId ? { ...team, name: teamDisplayName(trimmed, index) } : team,
+              ),
+            },
+          }
+        })
+      },
+
       resetAll: () =>
         set({
           participants: [],
@@ -286,6 +350,20 @@ export const useAppStore = create<AppState>()(
     {
       name: 'random-team-data',
       version: 1,
+      /** Старые сохранённые настройки могут не знать о новых полях (teamNames) —
+       *  сливаем их с дефолтами, а не заменяем целиком */
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<AppState>
+        return {
+          ...current,
+          ...saved,
+          settings: {
+            ...current.settings,
+            ...saved.settings,
+            teamNames: saved.settings?.teamNames ?? current.settings.teamNames,
+          },
+        }
+      },
     },
   ),
 )

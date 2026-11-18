@@ -60,6 +60,8 @@ export type RuleInput =
 export interface Settings {
   /** Количество команд */
   teamCount: number
+  /** Пользовательские названия команд по индексу; пустая строка — «Команда N» */
+  teamNames: string[]
   /** «Поровну» (разница ≤ 1 человека) или границы min/max */
   sizingMode: SizingMode
   minSize: number
