@@ -34,11 +34,14 @@ export function ParticipantChip({ participant, weight }: ParticipantChipProps) {
         {info.short}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium" title={participant.nickname}>
-          {participant.nickname || participant.fullName}
-        </span>
-        <span className="block truncate text-xs text-slate-400 dark:text-slate-500" title={participant.fullName}>
+        <span className="block truncate font-medium" title={participant.fullName}>
           {participant.fullName}
+        </span>
+        <span
+          className="block truncate text-xs italic text-slate-400 dark:text-slate-500"
+          title={participant.nickname}
+        >
+          {participant.nickname || '—'}
         </span>
       </span>
       <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">{weight}</span>
