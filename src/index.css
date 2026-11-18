@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/*
+  Тёмная тема управляется классом `dark` на <html>.
+  Класс ставится анти-флеш-скриптом в index.html до загрузки приложения,
+  а дальше синхронизируется стором темы (src/stores/theme-store.ts).
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}

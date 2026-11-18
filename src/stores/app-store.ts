@@ -1,0 +1,296 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { uid } from '@/domain/id'
+import { generateNickname } from '@/domain/nicknames'
+import { DEFAULT_WEIGHTS, type Position } from '@/domain/positions'
+import type {
+  DistributionResult,
+  Participant,
+  Rule,
+  RuleInput,
+  Settings,
+  SizingMode,
+} from '@/domain/types'
+
+export const DEFAULT_SETTINGS: Settings = {
+  teamCount: 2,
+  sizingMode: 'even',
+  minSize: 3,
+  maxSize: 10,
+  weights: { ...DEFAULT_WEIGHTS },
+  rules: [],
+}
+
+/* Границы значений настроек */
+const TEAM_COUNT_LIMITS = { min: 1, max: 50 } as const
+const SIZE_LIMITS = { min: 1, max: 99 } as const
+const WEIGHT_LIMITS = { min: 0, max: 99 } as const
+
+const clamp = (value: number, limits: { min: number; max: number }): number =>
+  Math.min(limits.max, Math.max(limits.min, Math.round(value)))
+
+export interface ParticipantInput {
+  fullName: string
+  position: Position
+  nickname?: string
+}
+
+interface AppState {
+  participants: Participant[]
+  settings: Settings
+  result: DistributionResult | null
+
+  /* Участники */
+  /** Добавляет участника, возвращает id (или undefined для пустого имени) */
+  addParticipant: (input: ParticipantInput) => string | undefined
+  /** Массовое добавление (импорт CSV), возвращает число добавленных */
+  addParticipants: (items: readonly ParticipantInput[]) => number
+  updateParticipant: (
+    id: string,
+    patch: Partial<Pick<Participant, 'fullName' | 'position' | 'nickname'>>,
+  ) => void
+  /** Удаляет участника вместе со всеми правилами, где он участвует */
+  removeParticipant: (id: string) => void
+  /** Новое случайное прозвище для участника (уникальное среди остальных) */
+  regenerateNickname: (id: string) => void
+  /** Новые прозвища для всех участников сразу */
+  regenerateAllNicknames: () => void
+
+  /* Настройки */
+  setTeamCount: (count: number) => void
+  setSizingMode: (mode: SizingMode) => void
+  setSizeLimits: (min: number, max: number) => void
+  setWeight: (position: Position, weight: number) => void
+
+  /* Правила */
+  /** Добавляет правило, возвращает id (undefined — некорректный ввод или дубль) */
+  addRule: (input: RuleInput) => string | undefined
+  removeRule: (id: string) => void
+  toggleRule: (id: string) => void
+
+  /* Результат распределения */
+  setResult: (result: DistributionResult) => void
+  clearResult: () => void
+  /** Ручной перенос участника в другую команду (баланс пересчитывается на лету) */
+  moveParticipant: (participantId: string, toTeamId: string) => void
+
+  /** Полный сброс данных к дефолтам */
+  resetAll: () => void
+}
+
+/** Ссылается ли правило на участника */
+function ruleUsesParticipant(rule: Rule, participantId: string): boolean {
+  return (
+    (rule.type === 'together' || rule.type === 'separate') &&
+    (rule.a === participantId || rule.b === participantId)
+  )
+}
+
+/** Занятые прозвища участников (можно исключить одного) */
+function collectNicknames(state: Pick<AppState, 'participants'>, excludeId?: string): Set<string> {
+  return new Set(
+    state.participants
+      .filter((p) => p.id !== excludeId && p.nickname !== '')
+      .map((p) => p.nickname),
+  )
+}
+
+/** Проверка на дубль (пары симметричны) */
+function isDuplicateRule(rules: readonly Rule[], input: RuleInput): boolean {
+  return rules.some((rule) => {
+    if (rule.type !== input.type) return false
+    if (rule.type === 'level-cap' && input.type === 'level-cap') {
+      return rule.position === input.position && rule.maxPerTeam === input.maxPerTeam
+    }
+    if (
+      (rule.type === 'together' || rule.type === 'separate') &&
+      (input.type === 'together' || input.type === 'separate')
+    ) {
+      return (rule.a === input.a && rule.b === input.b) || (rule.a === input.b && rule.b === input.a)
+    }
+    return false
+  })
+}
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      participants: [],
+      settings: structuredClone(DEFAULT_SETTINGS),
+      result: null,
+
+      addParticipant: ({ fullName, position, nickname }) => {
+        const name = fullName.trim()
+        if (!name) return undefined
+        // Прозвище: переданное вручную или автоматически сгенерированное
+        const nicknameValue = nickname?.trim() || generateNickname(collectNicknames(get())) || ''
+        const participant: Participant = {
+          id: uid(),
+          fullName: name,
+          position,
+          nickname: nicknameValue,
+        }
+        set((state) => ({ participants: [...state.participants, participant] }))
+        return participant.id
+      },
+
+      addParticipants: (items) => {
+        const added: Participant[] = []
+        const used = collectNicknames(get())
+        for (const item of items) {
+          const name = item.fullName.trim()
+          if (!name) continue
+          const nickname = item.nickname?.trim() || generateNickname(used) || ''
+          if (nickname) used.add(nickname)
+          added.push({
+            id: uid(),
+            fullName: name,
+            position: item.position,
+            nickname,
+          })
+        }
+        set((state) => ({ participants: [...state.participants, ...added] }))
+        return added.length
+      },
+
+      updateParticipant: (id, patch) => {
+        set((state) => ({
+          participants: state.participants.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        }))
+      },
+
+      removeParticipant: (id) => {
+        set((state) => ({
+          participants: state.participants.filter((p) => p.id !== id),
+          settings: {
+            ...state.settings,
+            rules: state.settings.rules.filter((rule) => !ruleUsesParticipant(rule, id)),
+          },
+          result: state.result
+            ? {
+                ...state.result,
+                teams: state.result.teams.map((team) => ({
+                  ...team,
+                  memberIds: team.memberIds.filter((memberId) => memberId !== id),
+                })),
+              }
+            : null,
+        }))
+      },
+
+      regenerateNickname: (id) => {
+        set((state) => {
+          if (!state.participants.some((p) => p.id === id)) return state
+          const nickname = generateNickname(collectNicknames(state, id))
+          if (!nickname) return state
+          return {
+            participants: state.participants.map((p) => (p.id === id ? { ...p, nickname } : p)),
+          }
+        })
+      },
+
+      regenerateAllNicknames: () => {
+        set((state) => {
+          if (state.participants.length === 0) return state
+          // Все прозвища меняются одновременно, поэтому «занятыми» считаем только новые
+          const used = new Set<string>()
+          const participants = state.participants.map((p) => {
+            const nickname = generateNickname(used) || p.nickname
+            if (nickname) used.add(nickname)
+            return { ...p, nickname }
+          })
+          return { participants }
+        })
+      },
+
+      setTeamCount: (count) => {
+        set((state) => ({
+          settings: { ...state.settings, teamCount: clamp(count, TEAM_COUNT_LIMITS) },
+        }))
+      },
+
+      setSizingMode: (mode) => {
+        set((state) => ({ settings: { ...state.settings, sizingMode: mode } }))
+      },
+
+      setSizeLimits: (min, max) => {
+        const lo = clamp(Math.min(min, max), SIZE_LIMITS)
+        const hi = clamp(Math.max(min, max), SIZE_LIMITS)
+        set((state) => ({ settings: { ...state.settings, minSize: lo, maxSize: hi } }))
+      },
+
+      setWeight: (position, weight) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            weights: { ...state.settings.weights, [position]: clamp(weight, WEIGHT_LIMITS) },
+          },
+        }))
+      },
+
+      addRule: (input) => {
+        const state = get()
+        if ((input.type === 'together' || input.type === 'separate') && input.a === input.b) {
+          return undefined
+        }
+        if (input.type === 'level-cap' && input.maxPerTeam < 1) return undefined
+        if (isDuplicateRule(state.settings.rules, input)) return undefined
+        const rule: Rule = { ...input, id: uid(), enabled: true }
+        set({ settings: { ...state.settings, rules: [...state.settings.rules, rule] } })
+        return rule.id
+      },
+
+      removeRule: (id) => {
+        set((state) => ({
+          settings: { ...state.settings, rules: state.settings.rules.filter((r) => r.id !== id) },
+        }))
+      },
+
+      toggleRule: (id) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            rules: state.settings.rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)),
+          },
+        }))
+      },
+
+      setResult: (result) => set({ result }),
+      clearResult: () => set({ result: null }),
+
+      moveParticipant: (participantId, toTeamId) => {
+        set((state) => {
+          if (!state.result) return state
+          const targetExists = state.result.teams.some((team) => team.id === toTeamId)
+          const participantAssigned = state.result.teams.some((team) =>
+            team.memberIds.includes(participantId),
+          )
+          if (!targetExists || !participantAssigned) return state
+          return {
+            ...state,
+            result: {
+              ...state.result,
+              teams: state.result.teams.map((team) => {
+                const without = team.memberIds.filter((id) => id !== participantId)
+                return team.id === toTeamId
+                  ? { ...team, memberIds: [...without, participantId] }
+                  : { ...team, memberIds: without }
+              }),
+            },
+          }
+        })
+      },
+
+      resetAll: () =>
+        set({
+          participants: [],
+          settings: structuredClone(DEFAULT_SETTINGS),
+          result: null,
+        }),
+    }),
+    {
+      name: 'random-team-data',
+      version: 1,
+    },
+  ),
+)
