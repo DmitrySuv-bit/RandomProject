@@ -73,10 +73,11 @@ export function ResultsPage() {
 
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {result.teams.map((team) => (
+              {result.teams.map((team, index) => (
                 <TeamCard
                   key={team.id}
                   team={team}
+                  index={index}
                   balance={report.balance.find((b) => b.teamId === team.id)}
                   participantsById={byId}
                   weights={settings.weights}

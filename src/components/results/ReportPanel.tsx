@@ -1,4 +1,5 @@
 import type { Report, Team } from '@/domain/types'
+import { TeamBadge } from './TeamBadge'
 
 interface ReportPanelProps {
   report: Report
@@ -10,6 +11,7 @@ export function ReportPanel({ report, teams }: ReportPanelProps) {
   const violated = report.ruleResults.filter((r) => !r.ok)
   const fulfilledCount = report.ruleResults.length - violated.length
   const nameOf = (teamId: string) => teams.find((t) => t.id === teamId)?.name ?? '?'
+  const indexOf = (teamId: string) => teams.findIndex((t) => t.id === teamId)
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -38,7 +40,14 @@ export function ReportPanel({ report, teams }: ReportPanelProps) {
             <tbody className="tabular-nums">
               {report.balance.map((balance) => (
                 <tr key={balance.teamId} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="py-1.5 pr-2 font-medium">{nameOf(balance.teamId)}</td>
+                  <td className="py-1.5 pr-2 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      {indexOf(balance.teamId) >= 0 && (
+                        <TeamBadge index={indexOf(balance.teamId)} className="h-4.5 w-4.5 text-[10px]" />
+                      )}
+                      <span className="truncate">{nameOf(balance.teamId)}</span>
+                    </span>
+                  </td>
                   <td className="py-1.5 pr-2">{balance.count}</td>
                   <td className="py-1.5 pr-2">{balance.totalWeight}</td>
                   <td className="py-1.5">
