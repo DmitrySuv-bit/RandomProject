@@ -1,5 +1,5 @@
 import { uid } from '@/domain/id'
-import { teamDisplayName } from '@/domain/teams'
+import { generateTeamName } from '@/domain/team-names'
 import type { DistributionResult, Participant, Settings } from '@/domain/types'
 import { buildClusters } from './clusters'
 import { draftSolution } from './draft'
@@ -62,11 +62,14 @@ export function distribute(
     }
   }
 
-  const teams = bestTeams!.map((memberIds, index) => ({
-    id: uid(),
-    name: teamDisplayName(settings.teamNames[index], index),
-    memberIds,
-  }))
+  // Кастомное название из настроек или случайное «Огненные капибары»; последнее средство — «Команда N»
+  const usedNames = new Set<string>()
+  const teams = bestTeams!.map((memberIds, index) => {
+    const custom = settings.teamNames[index]?.trim()
+    const name = custom || generateTeamName(usedNames, rng) || `Команда ${index + 1}`
+    usedNames.add(name)
+    return { id: uid(), name, memberIds }
+  })
 
   const report = computeReport(teams, participants, settings, clustering.impossibleRules)
   return { teams, report, createdAt: Date.now() }

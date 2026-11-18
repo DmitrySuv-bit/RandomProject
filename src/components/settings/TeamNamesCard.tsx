@@ -1,18 +1,25 @@
 import { useAppStore } from '@/stores/app-store'
-import { teamDisplayName } from '@/domain/teams'
+import { Button } from '@/components/ui/Button'
 
-/** Карточка «Названия команд»: своё имя для каждой команды или «Команда N» по умолчанию */
+/** Карточка «Названия команд»: своё имя для каждой команды или сгенерированное */
 export function TeamNamesCard() {
   const { teamCount, teamNames } = useAppStore((s) => s.settings)
   const setTeamName = useAppStore((s) => s.setTeamName)
+  const generateTeamNames = useAppStore((s) => s.generateTeamNames)
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h3 className="text-base font-semibold">Названия команд</h3>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Задайте свои названия — они используются при распределении и в экспорте CSV.
-        Пустое поле означает «Команда N».
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold">Названия команд</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Пустые поля получают случайное название при распределении — или сгенерируйте сразу.
+          </p>
+        </div>
+        <Button onClick={generateTeamNames} disabled={teamCount === 0}>
+          🎲 Сгенерировать
+        </Button>
+      </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: teamCount }, (_, index) => (
@@ -23,7 +30,7 @@ export function TeamNamesCard() {
             <input
               type="text"
               value={teamNames[index] ?? ''}
-              placeholder={teamDisplayName('', index)}
+              placeholder="случайное название"
               maxLength={60}
               aria-label={`Название команды ${index + 1}`}
               onChange={(event) => setTeamName(index, event.target.value)}

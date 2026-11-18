@@ -246,7 +246,7 @@ describe('результат', () => {
     expect(useAppStore.getState().settings.teamNames).toEqual(['', 'Синие киты'])
   })
 
-  it('renameTeam с пустым именем возвращает стандартное «Команда N»', () => {
+  it('renameTeam с пустым именем даёт сгенерированное название', () => {
     useAppStore.getState().setResult({
       teams: [{ id: 't1', name: 'Старое', memberIds: [] }],
       report: { ruleResults: [], balance: [], spread: 0 },
@@ -255,9 +255,35 @@ describe('результат', () => {
 
     useAppStore.getState().renameTeam('t1', '   ')
 
-    expect(useAppStore.getState().result?.teams[0]!.name).toBe('Команда 1')
-    // массив названий всегда дополнен до количества команд (дефолт 2)
+    // «Прилагательное животные», например «Дикие выдры»
+    expect(useAppStore.getState().result?.teams[0]!.name).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    // в настройках слот остаётся «авто» — пустым
     expect(useAppStore.getState().settings.teamNames).toEqual(['', ''])
+  })
+
+  it('generateTeamNames заполняет только пустые слоты и синхронизирует результат', () => {
+    useAppStore.getState().setTeamCount(3)
+    useAppStore.getState().setTeamName(1, 'Орлы')
+    useAppStore.getState().setResult({
+      teams: [
+        { id: 't1', name: 'Старое 1', memberIds: [] },
+        { id: 't2', name: 'Орлы', memberIds: [] },
+        { id: 't3', name: 'Старое 3', memberIds: [] },
+      ],
+      report: { ruleResults: [], balance: [], spread: 0 },
+      createdAt: 0,
+    })
+
+    useAppStore.getState().generateTeamNames()
+
+    const names = useAppStore.getState().settings.teamNames
+    expect(names[1]).toBe('Орлы')
+    expect(names[0]).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    expect(names[2]).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    expect(new Set(names).size).toBe(3)
+
+    const resultNames = useAppStore.getState().result?.teams.map((t) => t.name)
+    expect(resultNames).toEqual(names)
   })
 
   it('renameTeam игнорирует неизвестную команду', () => {

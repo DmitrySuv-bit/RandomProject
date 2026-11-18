@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { uid } from '@/domain/id'
 import { generateNickname } from '@/domain/nicknames'
 import { DEFAULT_WEIGHTS, type Position } from '@/domain/positions'
+import { generateTeamName } from '@/domain/team-names'
 import { teamDisplayName } from '@/domain/teams'
 import type {
   DistributionResult,
@@ -60,8 +61,10 @@ interface AppState {
 
   /* Настройки */
   setTeamCount: (count: number) => void
-  /** Задаёт название команды по индексу (пустая строка — «Команда N») */
+  /** Задаёт название команды по индексу (пустая строка — сгенерированное) */
   setTeamName: (index: number, name: string) => void
+  /** Заполняет пустые названия команд сгенерированными, кастомные не трогает */
+  generateTeamNames: () => void
   setSizingMode: (mode: SizingMode) => void
   setSizeLimits: (min: number, max: number) => void
   setWeight: (position: Position, weight: number) => void
@@ -99,6 +102,25 @@ function collectNicknames(state: Pick<AppState, 'participants'>, excludeId?: str
       .filter((p) => p.id !== excludeId && p.nickname !== '')
       .map((p) => p.nickname),
   )
+}
+
+/** Название команды по умолчанию: кастомное или сгенерированное «Дикие выдры» */
+function defaultTeamName(
+  state: Pick<AppState, 'result'>,
+  index: number,
+  custom: string,
+): string {
+  const trimmed = custom.trim()
+  return trimmed || generateTeamName(resultTeamNames(state, index)) || teamDisplayName(trimmed, index)
+}
+
+/** Занятые названия команд результата (можно исключить одну по индексу) */
+function resultTeamNames(state: Pick<AppState, 'result'>, excludeIndex?: number): Set<string> {
+  const names = new Set<string>()
+  state.result?.teams.forEach((team, i) => {
+    if (i !== excludeIndex && team.name) names.add(team.name)
+  })
+  return names
 }
 
 /** Проверка на дубль (пары симметричны) */
@@ -230,16 +252,47 @@ export const useAppStore = create<AppState>()(
           )
           return {
             settings: { ...state.settings, teamNames },
-            // готовый результат переименовываем на лету
+            // готовой команде название меняем на лету; пустое — сгенерированное
             result:
               state.result && index < state.result.teams.length
                 ? {
                     ...state.result,
                     teams: state.result.teams.map((team, i) =>
-                      i === index ? { ...team, name: teamDisplayName(name, index) } : team,
+                      i === index ? { ...team, name: defaultTeamName(state, index, name) } : team,
                     ),
                   }
                 : state.result,
+          }
+        })
+      },
+
+      /** Заполняет пустые названия сгенерированными, кастомные не трогает */
+      generateTeamNames: () => {
+        set((state) => {
+          const used = new Set<string>()
+          const after: string[] = []
+          for (let i = 0; i < state.settings.teamCount; i++) {
+            const custom = state.settings.teamNames[i] ?? ''
+            if (custom.trim()) {
+              used.add(custom.trim())
+              after.push(custom)
+              continue
+            }
+            const generated = generateTeamName(used) ?? ''
+            if (generated) used.add(generated)
+            after.push(generated)
+          }
+          return {
+            settings: { ...state.settings, teamNames: after },
+            result: state.result
+              ? {
+                  ...state.result,
+                  teams: state.result.teams.map((team, i) => {
+                    const next = after[i]
+                    return next ? { ...team, name: next } : team
+                  }),
+                }
+              : state.result,
           }
         })
       },
@@ -333,7 +386,7 @@ export const useAppStore = create<AppState>()(
             result: {
               ...state.result,
               teams: state.result.teams.map((team) =>
-                team.id === teamId ? { ...team, name: teamDisplayName(trimmed, index) } : team,
+                team.id === teamId ? { ...team, name: defaultTeamName(state, index, trimmed) } : team,
               ),
             },
           }

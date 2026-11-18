@@ -276,16 +276,23 @@ describe('distribute — отчёт', () => {
     expect(result.report.spread).toBe(0)
   })
 
-  it('команды получают имена «Команда 1..N» и уникальные id', () => {
+  it('команды без названий получают сгенерированные уникальные имена и уникальные id', () => {
     const participants = makeParticipants(Array.from({ length: 6 }, (_, i) => [`У${i}`, 3] as const))
     const result = distribute(participants, makeSettings({ teamCount: 3 }), { seed: SEED })
 
-    expect(result.teams.map((t) => t.name)).toEqual(['Команда 1', 'Команда 2', 'Команда 3'])
+    const names = result.teams.map((t) => t.name)
+    // «Прилагательное животные», например «Огненные капибары»
+    for (const name of names) expect(name).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    expect(new Set(names).size).toBe(3)
     expect(new Set(result.teams.map((t) => t.id)).size).toBe(3)
     expect(result.createdAt).toBeGreaterThan(0)
+
+    // с тем же seed названия детерминированы
+    const again = distribute(participants, makeSettings({ teamCount: 3 }), { seed: SEED })
+    expect(again.teams.map((t) => t.name)).toEqual(names)
   })
 
-  it('использует пользовательские названия; пустые и пробельные заменяются на «Команда N»', () => {
+  it('использует пользовательские названия; пустые и пробельные заменяются сгенерированными', () => {
     const participants = makeParticipants(Array.from({ length: 6 }, (_, i) => [`У${i}`, 3] as const))
     const result = distribute(
       participants,
@@ -293,7 +300,12 @@ describe('distribute — отчёт', () => {
       { seed: SEED },
     )
 
-    expect(result.teams.map((t) => t.name)).toEqual(['Красные', 'Команда 2', 'Синие киты'])
+    const names = result.teams.map((t) => t.name)
+    expect(names[0]).toBe('Красные')
+    expect(names[2]).toBe('Синие киты')
+    // вторая команда — сгенерированное название, не совпадающее с кастомными
+    expect(names[1]).toMatch(/^[А-ЯЁ][а-яё]+ [а-яё]+$/)
+    expect(new Set(names).size).toBe(3)
   })
 
   it('названия из настроек попадают в отчёт по балансу', () => {
