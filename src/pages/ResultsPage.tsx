@@ -69,7 +69,7 @@ export function ResultsPage() {
 
       {result && report ? (
         <>
-          <ReportPanel report={report} teams={result.teams} />
+          <ReportPanel report={report} teams={result.teams} onRenameTeam={renameTeam} />
 
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

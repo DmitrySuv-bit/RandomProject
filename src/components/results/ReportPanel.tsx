@@ -1,13 +1,16 @@
 import type { Report, Team } from '@/domain/types'
+import { EditableTeamName } from './EditableTeamName'
 import { TeamBadge } from './TeamBadge'
 
 interface ReportPanelProps {
   report: Report
   teams: readonly Team[]
+  /** Переименование команды по клику на названии в таблице баланса */
+  onRenameTeam?: (teamId: string, name: string) => void
 }
 
 /** Панель отчёта: баланс команд и статусы правил */
-export function ReportPanel({ report, teams }: ReportPanelProps) {
+export function ReportPanel({ report, teams, onRenameTeam }: ReportPanelProps) {
   const violated = report.ruleResults.filter((r) => !r.ok)
   const fulfilledCount = report.ruleResults.length - violated.length
   const nameOf = (teamId: string) => teams.find((t) => t.id === teamId)?.name ?? '?'
@@ -45,7 +48,10 @@ export function ReportPanel({ report, teams }: ReportPanelProps) {
                       {indexOf(balance.teamId) >= 0 && (
                         <TeamBadge index={indexOf(balance.teamId)} className="h-4.5 w-4.5 text-[10px]" />
                       )}
-                      <span className="truncate">{nameOf(balance.teamId)}</span>
+                      <EditableTeamName
+                        value={nameOf(balance.teamId)}
+                        onRename={onRenameTeam ? (name) => onRenameTeam(balance.teamId, name) : undefined}
+                      />
                     </span>
                   </td>
                   <td className="py-1.5 pr-2">{balance.count}</td>

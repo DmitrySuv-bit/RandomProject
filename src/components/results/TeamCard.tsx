@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Position } from '@/domain/positions'
 import type { Participant, Team, TeamBalance } from '@/domain/types'
+import { EditableTeamName } from './EditableTeamName'
 import { ParticipantChip } from './ParticipantChip'
 import { TeamBadge } from './TeamBadge'
 
@@ -19,16 +19,6 @@ interface TeamCardProps {
 /** Карточка команды: номер, название, баланс и перетаскиваемые участники */
 export function TeamCard({ team, index, balance, participantsById, weights, onRename }: TeamCardProps) {
   const { setNodeRef, isOver } = useDroppable({ id: team.id })
-  const [editing, setEditing] = useState(false)
-
-  const startEditing = () => setEditing(true)
-
-  /** Коммит на blur или Enter; Esc отменяет правку */
-  const commit = (event: React.FocusEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>) => {
-    setEditing(false)
-    const name = event.currentTarget.value.trim()
-    if (onRename && name && name !== team.name) onRename(name)
-  }
 
   const count = balance?.count ?? team.memberIds.length
   const totalWeight = balance?.totalWeight ?? 0
@@ -44,37 +34,11 @@ export function TeamCard({ team, index, balance, participantsById, weights, onRe
       }`}
     >
       <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <TeamBadge index={index} className="h-7 w-7 text-sm shadow-sm" />
-          {editing ? (
-            <input
-              autoFocus
-              type="text"
-              defaultValue={team.name}
-              maxLength={60}
-              aria-label="Новое название команды"
-              onBlur={commit}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === 'Escape') {
-                  // Escape: возвращаем старое значение, blur с ним же ничего не изменит
-                  if (event.key === 'Escape') event.currentTarget.value = team.name
-                  event.currentTarget.blur()
-                }
-              }}
-              className="min-w-0 flex-1 rounded-lg border border-indigo-400 bg-white px-2 py-0.5 text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-indigo-500 dark:bg-slate-900 dark:text-white"
-            />
-          ) : (
-            <h3 className="min-w-0 text-lg font-bold leading-7 text-slate-900 dark:text-white">
-              <button
-                type="button"
-                onClick={onRename ? startEditing : undefined}
-                title={onRename ? 'Переименовать команду' : undefined}
-                className="block max-w-full truncate rounded-sm text-left hover:underline hover:decoration-dotted hover:decoration-slate-400 hover:underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:decoration-slate-500"
-              >
-                {team.name}
-              </button>
-            </h3>
-          )}
+          <h3 className="min-w-0 flex-1 text-lg font-bold leading-7 text-slate-900 dark:text-white">
+            <EditableTeamName value={team.name} onRename={onRename} />
+          </h3>
         </div>
         <span
           title={`${count} участников, суммарный вес ${totalWeight}`}
