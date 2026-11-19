@@ -51,7 +51,7 @@ describe('parseParticipantsCsv', () => {
       { fullName: 'Иванов Иван', position: 'middle-plus' },
       { fullName: 'Петров Пётр', position: 'senior-minus' },
     ])
-    expect(result.unrecognizedLabels).toEqual([])
+    expect(result.unrecognizedRanks).toEqual([])
   })
 
   it('поддерживает запятую как разделитель', () => {
@@ -81,19 +81,19 @@ describe('parseParticipantsCsv', () => {
   it('ранг можно опустить — ставится дефолт без предупреждения', () => {
     const result = parseParticipantsCsv('Иванов Иван')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
-    expect(result.unrecognizedLabels).toEqual([])
+    expect(result.unrecognizedRanks).toEqual([])
   })
 
-  it('нераспознанный ранг собирается в unrecognizedLabels', () => {
+  it('нераспознанный ранг собирается в unrecognizedRanks (вес неизвестен без колонки)', () => {
     const result = parseParticipantsCsv('Иванов Иван;шофёр\nПетров Пётр;senior plus')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
-    expect(result.unrecognizedLabels).toEqual(['шофёр'])
+    expect(result.unrecognizedRanks).toEqual([{ label: 'шофёр', weight: null }])
     expect(result.rows).toHaveLength(2)
   })
 
   it('нераспознанные ранги не дублируются (без учёта регистра и ё)', () => {
     const result = parseParticipantsCsv('Иванов;Шофёр\nПетров;шофёр\nСидоров;Шофер')
-    expect(result.unrecognizedLabels).toEqual(['Шофёр'])
+    expect(result.unrecognizedRanks).toEqual([{ label: 'Шофёр', weight: null }])
     expect(result.rows).toHaveLength(3)
   })
 
@@ -101,14 +101,25 @@ describe('parseParticipantsCsv', () => {
     const result = parseParticipantsCsv(
       'Команда;ФИО;Ранг;Прозвище;Вес\r\n' +
         'Команда 1;Иванов Иван;Middle plus;Дикая утка;4\r\n' +
-        'Команда 2;Петров Пётр;Шофёр;Задумчивый медведь;1',
+        'Команда 2;Петров Пётр;Шофёр;Задумчивый медведь;7',
     )
     expect(result.rows).toEqual([
       { fullName: 'Иванов Иван', position: 'middle-plus', nickname: 'Дикая утка' },
       { fullName: 'Петров Пётр', position: FALLBACK_POSITION, nickname: 'Задумчивый медведь' },
     ])
-    expect(result.unrecognizedLabels).toEqual(['Шофёр'])
+    expect(result.unrecognizedRanks).toEqual([{ label: 'Шофёр', weight: 7 }])
     expect(result.skippedLines).toBe(0)
+  })
+
+  it('вес нового ранга: запятая как десятичный разделитель и мусор игнорируются', () => {
+    const result = parseParticipantsCsv(
+      'ФИО;Ранг;Вес\nИванов;Шофёр;4,5\nПетров;Директор;abc\nСидоров;Грузчик;',
+    )
+    expect(result.unrecognizedRanks).toEqual([
+      { label: 'Шофёр', weight: 4.5 },
+      { label: 'Директор', weight: null },
+      { label: 'Грузчик', weight: null },
+    ])
   })
 
   it('срезает BOM в начале файла (экспорт добавляет его для Excel)', () => {

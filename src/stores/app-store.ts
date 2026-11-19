@@ -214,11 +214,14 @@ export const useAppStore = create<AppState>()(
         const state = get()
         let parsed = parseParticipantsCsv(text, state.settings.customPositions)
         const createdRanks: string[] = []
-        if (parsed.unrecognizedLabels.length > 0) {
-          // Нераспознанные ранги — пользовательские, с весом дефолтного ранга (Junior minus)
+        if (parsed.unrecognizedRanks.length > 0) {
+          // Нераспознанные ранги — пользовательские: вес из файла,
+          // а без колонки «Вес» — вес дефолтного ранга (Junior minus)
           const fallbackWeight = weightOfPosition(FALLBACK_POSITION, state.settings)
-          for (const label of parsed.unrecognizedLabels) {
-            if (get().addCustomPosition(label, fallbackWeight)) createdRanks.push(label)
+          for (const rank of parsed.unrecognizedRanks) {
+            if (get().addCustomPosition(rank.label, rank.weight ?? fallbackWeight)) {
+              createdRanks.push(rank.label)
+            }
           }
           // Разбираем файл заново — участники получают созданные ранги, а не дефолт
           parsed = parseParticipantsCsv(text, get().settings.customPositions)

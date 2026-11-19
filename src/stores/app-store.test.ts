@@ -242,6 +242,31 @@ describe('импорт CSV с рангами', () => {
     expect(state.participants[1]).toMatchObject({ fullName: 'Петров', position: 'senior-plus' })
   })
 
+  it('вес нового ранга берётся из колонки «Вес» файла', () => {
+    const summary = useAppStore
+      .getState()
+      .importParticipantsCsv('Команда;ФИО;Ранг;Прозвище;Вес\nКоманда 1;Иванов;Тимлид;Пёс;7')
+    expect(summary.createdRanks).toEqual(['Тимлид'])
+
+    const state = useAppStore.getState()
+    const custom = state.settings.customPositions[0]!
+    expect(custom).toMatchObject({ label: 'Тимлид', weight: 7 })
+    expect(state.participants[0]!.position).toBe(custom.id)
+  })
+
+  it('вес из файла округляется и ограничивается диапазоном 0–99', () => {
+    useAppStore
+      .getState()
+      .importParticipantsCsv('ФИО;Ранг;Вес\nИванов;Шофёр;999\nПетров;Грузчик;0,5')
+    const weights = useAppStore
+      .getState()
+      .settings.customPositions.map((p) => [p.label, p.weight])
+    expect(weights).toEqual([
+      ['Шофёр', 99],
+      ['Грузчик', 1], // 0,5 округляется до 1
+    ])
+  })
+
   it('существующий пользовательский ранг не дублируется', () => {
     const existingId = useAppStore.getState().addCustomPosition('Тимлид', 5)!
     const summary = useAppStore.getState().importParticipantsCsv('Иванов;тимлид\nПетров;Директор')

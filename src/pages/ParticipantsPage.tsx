@@ -74,7 +74,7 @@ function ImportBanner({ summary, onClose }: { summary: CsvImportSummary; onClose
           )}
           {createdRanks.length > 0 && (
             <p className="text-amber-600 dark:text-amber-400">
-              Новые ранги добавлены в настройки (вес как у Junior minus): {createdRanks.join(', ')}
+              Новые ранги добавлены в настройки: {createdRanks.join(', ')}
             </p>
           )}
           {skipped > 0 && <p className="opacity-70">Пропущено строк без ФИО: {skipped}</p>}

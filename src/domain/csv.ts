@@ -49,10 +49,17 @@ export function parsePositionValue(
   return isPosition(candidate) ? candidate : null
 }
 
+/** Нераспознанный ранг из файла — кандидат в пользовательские */
+export interface UnrecognizedRank {
+  label: string
+  /** Вес из колонки «Вес» (если она есть); null — колонки нет или значение не разобрать */
+  weight: number | null
+}
+
 export interface CsvImportResult {
   rows: ParticipantInput[]
   /** Нераспознанные ранги (уникальные, в порядке появления); строкам поставлен Junior minus */
-  unrecognizedLabels: string[]
+  unrecognizedRanks: UnrecognizedRank[]
   /** Непустые строки без ФИО */
   skippedLines: number
 }
@@ -100,16 +107,17 @@ interface ColumnIndexes {
   name: number
   position: number
   nickname: number | null
+  weight: number | null
 }
 
 /** Колонки по умолчанию (файл без заголовка): «ФИО;Ранг» */
-const DEFAULT_COLUMNS: ColumnIndexes = { name: 0, position: 1, nickname: null }
+const DEFAULT_COLUMNS: ColumnIndexes = { name: 0, position: 1, nickname: null, weight: null }
 
 /**
  * Разбирает строку заголовка на номера колонок по названиям: «ФИО»,
- * «Ранг» (или старый «Должность»), «Прозвище». Так понимается и формат
- * собственного экспорта «Команда;ФИО;Ранг;Прозвище;Вес» — колонки
- * «Команда» и «Вес» просто игнорируются.
+ * «Ранг» (или старый «Должность»), «Прозвище», «Вес». Так понимается и формат
+ * собственного экспорта «Команда;ФИО;Ранг;Прозвище;Вес» (вес — для создания
+ * новых рангов), колонка «Команда» игнорируется.
  * null — строка не похожа на заголовок.
  */
 function columnsFromHeader(cells: string[]): ColumnIndexes | null {
@@ -120,21 +128,37 @@ function columnsFromHeader(cells: string[]): ColumnIndexes | null {
   )
   if (name === -1 && position === -1) return null
   const nickname = normalized.findIndex((cell) => cell.startsWith('прозвищ'))
+  const weight = normalized.findIndex((cell) => cell.startsWith('вес'))
   return {
     name: name === -1 ? DEFAULT_COLUMNS.name : name,
     position: position === -1 ? DEFAULT_COLUMNS.position : position,
     nickname: nickname === -1 ? null : nickname,
+    weight: weight === -1 ? null : weight,
   }
+}
+
+/**
+ * Вес из ячейки колонки «Вес»: целое или дробное, запятая или точка
+ * (Excel в русской локали пишет дробные через запятую).
+ * null — ячейка пустая или значение не разобрать.
+ */
+function parseWeightValue(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const value = Number(trimmed.replace(',', '.'))
+  if (!Number.isFinite(value) || value < 0) return null
+  return value
 }
 
 /**
  * Разбор CSV со списком участников.
  * Без заголовка формат строки: «ФИО;Ранг» (или через запятую), ранг можно опустить.
  * С заголовком колонки определяются по названиям — так читается и собственный
- * экспорт «Команда;ФИО;Ранг;Прозвище;Вес» (прозвища восстанавливаются,
- * команда и вес игнорируются). Кавычки разбираются по RFC 4180, BOM срезается.
+ * экспорт «Команда;ФИО;Ранг;Прозвище;Вес»: прозвища восстанавливаются, а вес
+ * из файла используется при создании пользовательских рангов. «Команда» игнорируется.
+ * Кавычки разбираются по RFC 4180, BOM срезается.
  * Ранг ищется среди встроенных (толерантно) и пользовательских (по названию).
- * Нераспознанные названия собираются в unrecognizedLabels — вызывающая сторона
+ * Нераспознанные ранги собираются в unrecognizedRanks — вызывающая сторона
  * может создать из них пользовательские ранги и разобрать файл заново.
  */
 export function parseParticipantsCsv(
@@ -142,7 +166,7 @@ export function parseParticipantsCsv(
   customPositions: readonly CustomPosition[] = [],
 ): CsvImportResult {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/)
-  const result: CsvImportResult = { rows: [], unrecognizedLabels: [], skippedLines: 0 }
+  const result: CsvImportResult = { rows: [], unrecognizedRanks: [], skippedLines: 0 }
 
   let index = 0
   while (index < lines.length && lines[index]!.trim() === '') index++
@@ -167,10 +191,13 @@ export function parseParticipantsCsv(
     const positionRaw = cells[cols.position] ?? ''
     const recognized = positionRaw ? parsePositionValue(positionRaw, customPositions) : null
     if (positionRaw && !recognized) {
-      const isNew = !result.unrecognizedLabels.some(
-        (label) => normalizeLabel(label) === normalizeLabel(positionRaw),
+      const isNew = !result.unrecognizedRanks.some(
+        (rank) => normalizeLabel(rank.label) === normalizeLabel(positionRaw),
       )
-      if (isNew) result.unrecognizedLabels.push(positionRaw)
+      if (isNew) {
+        const weightRaw = cols.weight !== null ? cells[cols.weight] ?? '' : ''
+        result.unrecognizedRanks.push({ label: positionRaw, weight: parseWeightValue(weightRaw) })
+      }
     }
     const position = recognized ?? FALLBACK_POSITION
 

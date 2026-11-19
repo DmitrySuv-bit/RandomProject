@@ -76,7 +76,7 @@ describe('round-trip: экспорт → импорт', () => {
       { fullName: 'Петров Пётр', position: 'junior-minus', nickname: 'Задумчивый медведь' },
       { fullName: 'Семёнова Анна', position: 'middle-plus', nickname: 'Неопознанный енот' },
     ])
-    expect(parsed.unrecognizedLabels).toEqual([])
+    expect(parsed.unrecognizedRanks).toEqual([])
     expect(parsed.skippedLines).toBe(0)
   })
 
@@ -96,7 +96,7 @@ describe('round-trip: экспорт → импорт', () => {
     ])
   })
 
-  it('ранги «свои» тоже проходят круг: экспорт даёт название, импорт узнаёт его', () => {
+  it('ранги «свои» тоже проходят круг: экспорт даёт название и вес, импорт узнаёт их', () => {
     const { result, settings } = setup()
     settings.customPositions = [{ id: 'c1', label: 'Тимлид', short: 'ТИМ', weight: 7 }]
     const participants: Participant[] = [
@@ -107,9 +107,9 @@ describe('round-trip: экспорт → импорт', () => {
       participants,
       settings,
     )
-    // в другом браузере списка своих рангов нет — импорт создаст его заново
+    // в другом браузере списка своих рангов нет — импорт узнает название и вес из файла
     const parsed = parseParticipantsCsv(csv)
-    expect(parsed.unrecognizedLabels).toEqual(['Тимлид'])
+    expect(parsed.unrecognizedRanks).toEqual([{ label: 'Тимлид', weight: 7 }])
     expect(parsed.rows).toEqual([
       { fullName: 'Иванов Иван', position: 'junior-minus', nickname: 'Пёс' },
     ])
