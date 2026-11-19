@@ -5,7 +5,7 @@ export interface Participant {
   id: string
   /** ФИО */
   fullName: string
-  /** Должность */
+  /** Ранг */
   position: Position
   /** Прозвище-животное, например «Задумчивый медведь» */
   nickname: string
@@ -41,7 +41,7 @@ export interface SeparateRule extends RuleBase {
   b: string
 }
 
-/** Правило: не больше N участников указанной должности в команде */
+/** Правило: не больше N участников указанного ранга в команде */
 export interface LevelCapRule extends RuleBase {
   type: 'level-cap'
   position: Position
@@ -65,9 +65,9 @@ export interface Settings {
   sizingMode: SizingMode
   minSize: number
   maxSize: number
-  /** Настраиваемые веса встроенных должностей */
+  /** Настраиваемые веса встроенных рангов */
   weights: Record<BuiltinPosition, number>
-  /** Пользовательские должности со своими весами */
+  /** Пользовательские ранги со своими весами */
   customPositions: CustomPosition[]
   /** Правила совместного/раздельного размещения */
   rules: Rule[]

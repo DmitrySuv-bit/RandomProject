@@ -26,7 +26,7 @@ describe('teamsToCsv', () => {
     const { result, participants, settings } = setup()
     const lines = teamsToCsv(result, participants, settings).split('\r\n')
 
-    expect(lines[0]).toBe('Команда;ФИО;Должность;Прозвище;Вес')
+    expect(lines[0]).toBe('Команда;ФИО;Ранг;Прозвище;Вес')
     expect(lines[1]).toBe('Команда 1;Иванов Иван;Senior plus;Дикая утка;6')
     expect(lines[2]).toBe('Команда 1;Петров Пётр;Junior minus;Задумчивый медведь;1')
     expect(lines[3]).toBe('Команда 2;Семёнова Анна;Middle plus;Неопознанный енот;4')

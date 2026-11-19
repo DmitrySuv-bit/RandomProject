@@ -87,14 +87,14 @@ export function buildClusters(
     }
   }
 
-  /* Лимит должности уже нарушен внутри группы */
+  /* Лимит ранга уже нарушен внутри группы */
   for (const rule of caps) {
     const messages: string[] = []
     for (const [root, ids] of groups) {
       if (brokenGroupRoots.has(root)) continue
       const count = ids.filter((id) => positionOf.get(id) === rule.position).length
       if (count > rule.maxPerTeam) {
-        messages.push(`в связанной группе уже ${count} участников этой должности (лимит ${rule.maxPerTeam})`)
+        messages.push(`в связанной группе уже ${count} участников этого ранга (лимит ${rule.maxPerTeam})`)
       }
     }
     if (messages.length > 0) impossibleRules.set(rule.id, messages.join('; '))

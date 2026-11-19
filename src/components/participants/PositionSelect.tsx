@@ -7,7 +7,7 @@ interface PositionSelectProps {
   id?: string
 }
 
-/** Селект должности с весами: встроенные + пользовательские */
+/** Селект ранга с весами: встроенные + пользовательские */
 export function PositionSelect({ value, onChange, id }: PositionSelectProps) {
   const settings = useAppStore((s) => s.settings)
 

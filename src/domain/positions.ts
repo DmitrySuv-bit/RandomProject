@@ -1,6 +1,6 @@
 import type { Settings } from './types'
 
-/** Встроенные должности (порядок — по возрастанию веса) */
+/** Встроенные ранги (порядок — по возрастанию веса) */
 export const POSITION_IDS = [
   'junior-minus',
   'junior-plus',
@@ -13,12 +13,12 @@ export const POSITION_IDS = [
 export type BuiltinPosition = (typeof POSITION_IDS)[number]
 
 /**
- * Должность: одна из встроенных или id пользовательской должности.
+ * Ранг: один из встроенных или id пользовательского ранга.
  * Открытый строковый тип — `(string & {})` сохраняет автодополнение литералов.
  */
 export type Position = BuiltinPosition | (string & {})
 
-/** Пользовательская должность, созданная в настройках */
+/** Пользовательский ранг, созданный в настройках */
 export interface CustomPosition {
   id: string
   /** Отображаемое название */
@@ -58,7 +58,7 @@ export function isPosition(value: unknown): value is BuiltinPosition {
   return typeof value === 'string' && (POSITION_IDS as readonly string[]).includes(value)
 }
 
-/** Должность с актуальным весом: встроенная или пользовательская */
+/** Ранг с актуальным весом: встроенный или пользовательский */
 export interface ResolvedPosition {
   id: Position
   label: string
@@ -67,7 +67,7 @@ export interface ResolvedPosition {
   builtin: boolean
 }
 
-/** Все должности: встроенные (вес из настроек) + пользовательские */
+/** Все ранги: встроенные (вес из настроек) + пользовательские */
 export function resolvePositions(settings: Settings): ResolvedPosition[] {
   const builtins: ResolvedPosition[] = POSITIONS.map((p) => ({
     id: p.id,
@@ -86,12 +86,12 @@ export function resolvePositions(settings: Settings): ResolvedPosition[] {
   return [...builtins, ...customs]
 }
 
-/** Информация о должности по id; undefined для неизвестного id (например, удалённой) */
+/** Информация о ранге по id; undefined для неизвестного id (например, удалённого) */
 export function resolvePosition(id: Position, settings: Settings): ResolvedPosition | undefined {
   return resolvePositions(settings).find((p) => p.id === id)
 }
 
-/** Актуальный вес должности (0 для неизвестного id — на случай внешних данных) */
+/** Актуальный вес ранга (0 для неизвестного id — на случай внешних данных) */
 export function weightOfPosition(id: Position, settings: Settings): number {
   if (isPosition(id)) return settings.weights[id]
   return settings.customPositions.find((p) => p.id === id)?.weight ?? 0
@@ -103,7 +103,7 @@ export function shortFromLabel(label: string): string {
   return letters || '?'
 }
 
-/** Занято ли такое название должности (без учёта регистра) */
+/** Занято ли такое название ранга (без учёта регистра) */
 export function isLabelTaken(label: string, settings: Settings): boolean {
   const normalized = label.trim().toLowerCase()
   if (!normalized) return true

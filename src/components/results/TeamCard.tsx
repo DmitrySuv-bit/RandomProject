@@ -11,7 +11,7 @@ interface TeamCardProps {
   index: number
   balance: TeamBalance | undefined
   participantsById: ReadonlyMap<string, Participant>
-  /** Вес должности (встроенной или пользовательской) */
+  /** Вес ранга (встроенного или пользовательского) */
   weightOf: (position: Position) => number
   /** Подсвеченные поиском участники */
   highlightedIds?: ReadonlySet<string>

@@ -12,7 +12,7 @@ import { NumberField } from './NumberField'
 
 const DEFAULT_CUSTOM_WEIGHT = 3
 
-/** Карточка «Веса должностей»: встроенные + пользовательские должности */
+/** Карточка «Веса рангов»: встроенные + пользовательские ранги */
 export function WeightsCard() {
   const settings = useAppStore((s) => s.settings)
   const { weights, customPositions, rules } = settings
@@ -43,7 +43,7 @@ export function WeightsCard() {
 
   const isDefault = POSITIONS.every((p) => weights[p.id] === p.defaultWeight)
 
-  /** Кто использует должность — для блокировки удаления */
+  /** Кто использует ранг — для блокировки удаления */
   const usageOf = (id: string): { count: number; used: boolean } => {
     const people = participants.filter((p) => p.position === id).length
     const caps = rules.filter((r) => r.type === 'level-cap' && r.position === id).length
@@ -53,7 +53,7 @@ export function WeightsCard() {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center gap-3">
-        <h3 className="text-base font-semibold">Веса должностей</h3>
+        <h3 className="text-base font-semibold">Веса рангов</h3>
         <Button variant="ghost" onClick={resetToDefaults} disabled={isDefault} className="ml-auto">
           По умолчанию (1–6)
         </Button>
@@ -80,7 +80,7 @@ export function WeightsCard() {
               onCommit={(next) => setWeight(position.id, next)}
               min={0}
               max={99}
-              ariaLabel={`Вес должности ${position.label}`}
+              ariaLabel={`Вес ранга ${position.label}`}
               className="w-20"
             />
           </div>
@@ -89,10 +89,10 @@ export function WeightsCard() {
 
       <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
         <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-          Свои должности
+          Свои ранги
         </h4>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Например, «Тимлид» или «QA» — своя должность со своим весом, доступна участникам,
+          Например, «Тимлид» или «QA» — свой ранг со своим весом, доступен участникам,
           правилам и импорту CSV.
         </p>
 
@@ -117,8 +117,8 @@ export function WeightsCard() {
           <input
             type="text"
             value={label}
-            placeholder="Название должности"
-            aria-label="Название новой должности"
+            placeholder="Название ранга"
+            aria-label="Название нового ранга"
             maxLength={30}
             onChange={(event) => setLabel(event.target.value)}
             onKeyDown={(event) => {
@@ -131,10 +131,10 @@ export function WeightsCard() {
             onCommit={setWeightDraft}
             min={0}
             max={99}
-            ariaLabel="Вес новой должности"
+            ariaLabel="Вес нового ранга"
             className="w-20"
           />
-          <Button onClick={handleAdd} disabled={!canAdd} title={duplicate ? 'Такая должность уже есть' : undefined}>
+          <Button onClick={handleAdd} disabled={!canAdd} title={duplicate ? 'Такой ранг уже есть' : undefined}>
             ➕ Добавить
           </Button>
         </div>
@@ -165,7 +165,7 @@ function CustomPositionRow({ position, usage, onWeight, onRemove }: CustomPositi
         onCommit={onWeight}
         min={0}
         max={99}
-        ariaLabel={`Вес должности ${position.label}`}
+        ariaLabel={`Вес ранга ${position.label}`}
         className="w-20"
       />
       <IconButton
@@ -173,10 +173,10 @@ function CustomPositionRow({ position, usage, onWeight, onRemove }: CustomPositi
         disabled={!usage.used ? undefined : true}
         title={
           usage.used
-            ? `Нельзя удалить: используется (${usage.count}) — сначала снимите должность с участников и правил`
-            : 'Удалить должность'
+            ? `Нельзя удалить: используется (${usage.count}) — сначала снимите ранг с участников и правил`
+            : 'Удалить ранг'
         }
-        aria-label={`Удалить должность ${position.label}`}
+        aria-label={`Удалить ранг ${position.label}`}
         className={usage.used ? 'opacity-40' : ''}
       >
         🗑️

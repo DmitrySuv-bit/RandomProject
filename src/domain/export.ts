@@ -10,7 +10,7 @@ function escapeCell(value: string): string {
 }
 
 /**
- * CSV со составами команд: «Команда;ФИО;Должность;Прозвище;Вес».
+ * CSV со составами команд: «Команда;ФИО;Ранг;Прозвище;Вес».
  * Разделитель «;» и CRLF — открывается в Excel без настроек.
  */
 export function teamsToCsv(
@@ -19,7 +19,7 @@ export function teamsToCsv(
   settings: Settings,
 ): string {
   const byId = new Map(participants.map((p) => [p.id, p] as const))
-  const rows: string[] = ['Команда;ФИО;Должность;Прозвище;Вес']
+  const rows: string[] = ['Команда;ФИО;Ранг;Прозвище;Вес']
 
   for (const team of result.teams) {
     for (const memberId of team.memberIds) {

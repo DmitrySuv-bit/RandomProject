@@ -9,10 +9,10 @@ type RuleMode = 'together' | 'separate' | 'level-cap'
 const MODES: ReadonlyArray<{ id: RuleMode; label: string }> = [
   { id: 'together', label: '🤝 Вместе' },
   { id: 'separate', label: '⚡ Раздельно' },
-  { id: 'level-cap', label: '📊 Лимит должности' },
+  { id: 'level-cap', label: '📊 Лимит ранга' },
 ]
 
-/** Конструктор правил: пары «вместе»/«раздельно» и лимиты должностей */
+/** Конструктор правил: пары «вместе»/«раздельно» и лимиты рангов */
 export function RuleBuilder() {
   const participants = useAppStore((s) => s.participants)
   const settings = useAppStore((s) => s.settings)
@@ -102,7 +102,7 @@ export function RuleBuilder() {
           <select
             value={capPosition}
             onChange={(event) => setCapPosition(event.target.value as Position)}
-            aria-label="Должность лимита"
+            aria-label="Ранг лимита"
             className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
             {resolvePositions(settings).map((position) => (

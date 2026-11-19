@@ -75,11 +75,11 @@ interface AppState {
   setSizingMode: (mode: SizingMode) => void
   setSizeLimits: (min: number, max: number) => void
   setWeight: (position: BuiltinPosition, weight: number) => void
-  /** Добавляет пользовательскую должность, возвращает id (undefined — пустое или занятое название) */
+  /** Добавляет пользовательский ранг, возвращает id (undefined — пустое или занятое название) */
   addCustomPosition: (label: string, weight: number) => string | undefined
-  /** Меняет вес пользовательской должности */
+  /** Меняет вес пользовательского ранга */
   setCustomPositionWeight: (id: string, weight: number) => void
-  /** Удаляет пользовательскую должность (false — используется участниками или правилами) */
+  /** Удаляет пользовательский ранг (false — используется участниками или правилами) */
   removeCustomPosition: (id: string) => boolean
 
   /* Правила */

@@ -34,7 +34,7 @@ export function SettingsPage() {
         <h3 className="text-base font-semibold">Правила размещения</h3>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           «Вместе» — двое в одной команде; «раздельно» — в разных; лимит — не больше N участников
-          должности в команде. Правила можно временно выключать.
+          ранга в команде. Правила можно временно выключать.
         </p>
         <div className="mt-4">
           <RuleBuilder />

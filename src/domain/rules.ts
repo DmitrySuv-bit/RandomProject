@@ -4,7 +4,7 @@ import type { Participant, Rule } from './types'
 /**
  * Человекочитаемое описание правила — для списка правил и отчёта.
  * `getParticipant` может вернуть undefined (участник удалён).
- * `positionLabelOf` возвращает название должности (встроенной или пользовательской).
+ * `positionLabelOf` возвращает название ранга (встроенного или пользовательского).
  */
 export function describeRule(
   rule: Rule,

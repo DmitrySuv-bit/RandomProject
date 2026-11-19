@@ -87,7 +87,7 @@ function ImportBanner({ summary, onClose }: { summary: ImportSummary; onClose: (
           )}
           {unrecognized.length > 0 && (
             <p className="text-amber-600 dark:text-amber-400">
-              Должность не распознана (поставлен Junior minus): {unrecognized.join(', ')}
+              Ранг не распознан (поставлен Junior minus): {unrecognized.join(', ')}
             </p>
           )}
           {skipped > 0 && <p className="opacity-70">Пропущено строк без ФИО: {skipped}</p>}

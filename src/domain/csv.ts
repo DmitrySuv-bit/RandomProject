@@ -1,10 +1,10 @@
 import { isPosition, type CustomPosition, type Position } from './positions'
 import type { ParticipantInput } from './types'
 
-/** Должность по умолчанию, если в CSV она не указана или не распознана */
+/** Ранг по умолчанию, если в CSV он не указан или не распознан */
 export const FALLBACK_POSITION: Position = 'junior-minus'
 
-/** Точное совпадение с названием пользовательской должности (без учёта регистра) */
+/** Точное совпадение с названием пользовательского ранга (без учёта регистра) */
 function matchCustomPosition(raw: string, customPositions: readonly CustomPosition[]): Position | null {
   const normalized = raw.toLowerCase().replace(/ё/g, 'е').trim()
   if (!normalized) return null
@@ -15,9 +15,9 @@ function matchCustomPosition(raw: string, customPositions: readonly CustomPositi
 }
 
 /**
- * Толерантное распознавание должности:
+ * Толерантное распознавание ранга:
  * «Junior plus», «junior+», «джун минус», «мидл+», «senior −» и т.п.
- * Сначала точное совпадение с пользовательской должностью, затем встроенные.
+ * Сначала точное совпадение с пользовательским рангом, затем встроенные.
  * Возвращает null, если определить не удалось.
  */
 export function parsePositionValue(
@@ -46,7 +46,7 @@ export function parsePositionValue(
 
 export interface CsvImportResult {
   rows: ParticipantInput[]
-  /** Участники с нераспознанной должностью (заменена на Junior minus) */
+  /** Участники с нераспознанным рангом (заменён на Junior minus) */
   unrecognizedPosition: string[]
   /** Непустые строки без ФИО */
   skippedLines: number
@@ -59,17 +59,17 @@ function detectDelimiter(sample: string): string {
   return semicolons >= commas ? ';' : ','
 }
 
-/** Похоже ли первая строка на заголовок («ФИО;Должность») */
+/** Похоже ли первая строка на заголовок («ФИО;Ранг»; старый вариант «Должность» тоже принимаем) */
 function looksLikeHeader(cells: string[]): boolean {
   const normalized = cells.map((cell) => cell.trim().toLowerCase())
-  return normalized.some((cell) => cell === 'фио' || cell.startsWith('должност'))
+  return normalized.some((cell) => cell === 'фио' || cell.startsWith('ранг') || cell.startsWith('должност'))
 }
 
 /**
  * Разбор CSV со списком участников.
- * Формат строки: «ФИО;Должность» (или через запятую). Должность можно опустить.
+ * Формат строки: «ФИО;Ранг» (или через запятую). Ранг можно опустить.
  * Кавычки по RFC не разбираются — ФИО с разделителем внутри не поддерживается.
- * Должность ищется среди встроенных (толерантно) и пользовательских (по названию).
+ * Ранг ищется среди встроенных (толерантно) и пользовательских (по названию).
  */
 export function parseParticipantsCsv(
   text: string,

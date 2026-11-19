@@ -7,7 +7,7 @@ import type { LevelCapRule, Participant, Settings } from '@/domain/types'
 import { DEFAULT_SETTINGS } from '@/stores/app-store'
 
 function makeParticipants(defs: ReadonlyArray<[string, Position | number]>): Participant[] {
-  // Position — конкретная должность; number — вес (должность подбирается под вес 1–6)
+  // Position — конкретный ранг; number — вес (ранг подбирается под вес 1–6)
   const byWeight: Record<number, Position> = {
     1: 'junior-minus',
     2: 'junior-plus',
@@ -157,7 +157,7 @@ describe('distribute — правила', () => {
     expect(result.report.ruleResults[0]?.ok).toBe(true)
   })
 
-  it('лимит должности выполняется', () => {
+  it('лимит ранга выполняется', () => {
     // 6 × senior plus, 3 команды, лимит 2 → ровно по 2
     const participants = makeParticipants([
       ['С1', 'senior-plus'], ['С2', 'senior-plus'], ['С3', 'senior-plus'],
@@ -344,7 +344,7 @@ describe('distribute — подпись входа', () => {
     )
   })
 
-  it('добавление или смена должности участника меняет подпись', () => {
+  it('добавление или смена ранга участника меняет подпись', () => {
     const participants = makeParticipants(Array.from({ length: 4 }, (_, i) => [`У${i}`, 3] as const))
     const settings = makeSettings({ teamCount: 2 })
     const result = distribute(participants, settings, { seed: SEED })
@@ -356,7 +356,7 @@ describe('distribute — подпись входа', () => {
     expect(result.sourceSignature).not.toBe(distributionSignature(repositioned, settings))
   })
 
-  it('пользовательская должность участвует в весах, балансе и подписи', () => {
+  it('пользовательский ранг участвует в весах, балансе и подписи', () => {
     const lead = { id: 'lead', label: 'Тимлид', short: 'ТИМ', weight: 10 }
     const participants: Participant[] = [
       ...makeParticipants([
@@ -368,11 +368,11 @@ describe('distribute — подпись входа', () => {
     const settings = makeSettings({ teamCount: 2, customPositions: [lead] })
     const result = distribute(participants, settings, { seed: SEED })
 
-    // суммарный вес всех команд учитывает вес кастомной должности
+    // суммарный вес всех команд учитывает вес кастомного ранга
     const total = result.report.balance.reduce((sum, b) => sum + b.totalWeight, 0)
     expect(total).toBe(3 + 3 + 10)
 
-    // смена веса кастомной должности меняет подпись
+    // смена веса кастомного ранга меняет подпись
     expect(result.sourceSignature).toBe(distributionSignature(participants, settings))
     const changed = makeSettings({
       teamCount: 2,

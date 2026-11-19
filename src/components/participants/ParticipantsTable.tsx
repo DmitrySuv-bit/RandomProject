@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app-store'
 import { IconButton } from '@/components/ui/IconButton'
 import { PositionSelect } from './PositionSelect'
 
-/** Таблица участников: ФИО, должность, прозвище и действия */
+/** Таблица участников: ФИО, ранг, прозвище и действия */
 export function ParticipantsTable() {
   const participants = useAppStore((s) => s.participants)
   const settings = useAppStore((s) => s.settings)
@@ -37,7 +37,7 @@ export function ParticipantsTable() {
               ФИО
             </th>
             <th scope="col" className="px-4 py-3 font-medium">
-              Должность
+              Ранг
             </th>
             <th scope="col" className="px-4 py-3 font-medium">
               Прозвище

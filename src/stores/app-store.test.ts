@@ -173,14 +173,14 @@ describe('настройки', () => {
     expect(maxSize).toBe(10)
   })
 
-  it('setWeight обновляет вес должности', () => {
+  it('setWeight обновляет вес ранга', () => {
     useAppStore.getState().setWeight('senior-plus', 7)
     expect(useAppStore.getState().settings.weights['senior-plus']).toBe(7)
   })
 })
 
-describe('пользовательские должности', () => {
-  it('addCustomPosition создаёт должность и режет пробелы', () => {
+describe('пользовательские ранги', () => {
+  it('addCustomPosition создаёт ранг и режет пробелы', () => {
     const id = useAppStore.getState().addCustomPosition('  Тимлид  ', 7)
     expect(id).toBeTruthy()
     const position = useAppStore.getState().settings.customPositions[0]!
@@ -208,13 +208,13 @@ describe('пользовательские должности', () => {
     expect(useAppStore.getState().settings.customPositions[0]!.weight).toBe(5)
   })
 
-  it('removeCustomPosition не даёт удалить должность, используемую участником или правилом', () => {
+  it('removeCustomPosition не даёт удалить ранг, используемый участником или правилом', () => {
     const id = useAppStore.getState().addCustomPosition('Тимлид', 7)!
     useAppStore.getState().addParticipant({ fullName: 'А', position: id })
     expect(useAppStore.getState().removeCustomPosition(id)).toBe(false)
     expect(useAppStore.getState().settings.customPositions).toHaveLength(1)
 
-    // должность свободна после смены — удаление проходит
+    // ранг свободен после смены — удаление проходит
     const person = useAppStore.getState().participants[0]!
     useAppStore.getState().updateParticipant(person.id, { position: 'senior-plus' })
     expect(useAppStore.getState().removeCustomPosition(id)).toBe(true)

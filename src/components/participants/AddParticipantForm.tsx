@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/app-store'
 import { Button } from '@/components/ui/Button'
 import { PositionSelect } from './PositionSelect'
 
-/** Форма добавления участника: ФИО + должность */
+/** Форма добавления участника: ФИО + ранг */
 export function AddParticipantForm() {
   const addParticipant = useAppStore((s) => s.addParticipant)
   const [fullName, setFullName] = useState('')

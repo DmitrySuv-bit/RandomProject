@@ -24,12 +24,12 @@ describe('parsePositionValue', () => {
     ['шофёр', 'не уровень'],
     ['junior', 'нет модификатора'],
     ['junior плюс-минус', 'противоречивые модификаторы'],
-    ['директор', 'другая должность'],
+    ['директор', 'другой ранг'],
   ])('не распознаёт «%s» (%s)', (raw) => {
     expect(parsePositionValue(raw)).toBeNull()
   })
 
-  it('распознаёт пользовательскую должность по названию (без учёта регистра)', () => {
+  it('распознаёт пользовательский ранг по названию (без учёта регистра)', () => {
     const custom = [
       { id: 'c1', label: 'Тимлид', short: 'ТИМ', weight: 7 },
       { id: 'c2', label: 'QA', short: 'QA', weight: 2 },
@@ -45,7 +45,7 @@ describe('parsePositionValue', () => {
 })
 
 describe('parseParticipantsCsv', () => {
-  it('парсит строки «ФИО;Должность»', () => {
+  it('парсит строки «ФИО;Ранг»', () => {
     const result = parseParticipantsCsv('Иванов Иван;middle plus\nПетров Пётр;senior minus')
     expect(result.rows).toEqual([
       { fullName: 'Иванов Иван', position: 'middle-plus' },
@@ -59,10 +59,13 @@ describe('parseParticipantsCsv', () => {
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: 'middle-plus' })
   })
 
-  it('пропускает строку заголовка', () => {
-    const result = parseParticipantsCsv('ФИО;Должность\nИванов Иван;junior minus')
-    expect(result.rows).toHaveLength(1)
-    expect(result.rows[0]!.fullName).toBe('Иванов Иван')
+  it('пропускает строку заголовка («Ранг» и старый «Должность»)', () => {
+    const modern = parseParticipantsCsv('ФИО;Ранг\nИванов Иван;junior minus')
+    expect(modern.rows).toHaveLength(1)
+    expect(modern.rows[0]!.fullName).toBe('Иванов Иван')
+
+    const legacy = parseParticipantsCsv('ФИО;Должность\nИванов Иван;junior minus')
+    expect(legacy.rows).toHaveLength(1)
   })
 
   it('запятая в ФИО не мешает при разделителе «;»', () => {
@@ -75,13 +78,13 @@ describe('parseParticipantsCsv', () => {
     expect(result.rows).toHaveLength(2)
   })
 
-  it('должность можно опустить — ставится дефолт без предупреждения', () => {
+  it('ранг можно опустить — ставится дефолт без предупреждения', () => {
     const result = parseParticipantsCsv('Иванов Иван')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
     expect(result.unrecognizedPosition).toEqual([])
   })
 
-  it('нераспознанная должность помечается', () => {
+  it('нераспознанный ранг помечается', () => {
     const result = parseParticipantsCsv('Иванов Иван;шофёр\nПетров Пётр;senior plus')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
     expect(result.unrecognizedPosition).toEqual(['Иванов Иван'])
