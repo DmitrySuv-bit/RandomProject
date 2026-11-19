@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseParticipantsCsv } from './csv'
 import { csvFileName, teamsToCsv } from './export'
 import type { DistributionResult, Participant, Settings } from './types'
 import { DEFAULT_SETTINGS } from '@/stores/app-store'
@@ -62,6 +63,56 @@ describe('teamsToCsv', () => {
     }
     const lines = teamsToCsv(broken, participants, settings).split('\r\n')
     expect(lines).toHaveLength(1)
+  })
+})
+
+describe('round-trip: экспорт → импорт', () => {
+  it('собственный экспорт читается импортом участников', () => {
+    const { result, participants, settings } = setup()
+    const csv = teamsToCsv(result, participants, settings)
+    const parsed = parseParticipantsCsv(csv, settings.customPositions)
+    expect(parsed.rows).toEqual([
+      { fullName: 'Иванов Иван', position: 'senior-plus', nickname: 'Дикая утка' },
+      { fullName: 'Петров Пётр', position: 'junior-minus', nickname: 'Задумчивый медведь' },
+      { fullName: 'Семёнова Анна', position: 'middle-plus', nickname: 'Неопознанный енот' },
+    ])
+    expect(parsed.unrecognizedLabels).toEqual([])
+    expect(parsed.skippedLines).toBe(0)
+  })
+
+  it('ФИО с точкой с запятой и кавычками переживает экспорт и импорт', () => {
+    const { result, settings } = setup()
+    const participants: Participant[] = [
+      { id: 'p1', fullName: 'Иванов; "странный"', position: 'junior-minus', nickname: 'Пёс' },
+    ]
+    const csv = teamsToCsv(
+      { ...result, teams: [{ id: 't1', name: 'Команда 1', memberIds: ['p1'] }] },
+      participants,
+      settings,
+    )
+    const parsed = parseParticipantsCsv(csv)
+    expect(parsed.rows).toEqual([
+      { fullName: 'Иванов; "странный"', position: 'junior-minus', nickname: 'Пёс' },
+    ])
+  })
+
+  it('ранги «свои» тоже проходят круг: экспорт даёт название, импорт узнаёт его', () => {
+    const { result, settings } = setup()
+    settings.customPositions = [{ id: 'c1', label: 'Тимлид', short: 'ТИМ', weight: 7 }]
+    const participants: Participant[] = [
+      { id: 'p1', fullName: 'Иванов Иван', position: 'c1', nickname: 'Пёс' },
+    ]
+    const csv = teamsToCsv(
+      { ...result, teams: [{ id: 't1', name: 'Команда 1', memberIds: ['p1'] }] },
+      participants,
+      settings,
+    )
+    // в другом браузере списка своих рангов нет — импорт создаст его заново
+    const parsed = parseParticipantsCsv(csv)
+    expect(parsed.unrecognizedLabels).toEqual(['Тимлид'])
+    expect(parsed.rows).toEqual([
+      { fullName: 'Иванов Иван', position: 'junior-minus', nickname: 'Пёс' },
+    ])
   })
 })
 

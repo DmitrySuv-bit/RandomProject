@@ -51,7 +51,7 @@ describe('parseParticipantsCsv', () => {
       { fullName: 'Иванов Иван', position: 'middle-plus' },
       { fullName: 'Петров Пётр', position: 'senior-minus' },
     ])
-    expect(result.unrecognizedPosition).toEqual([])
+    expect(result.unrecognizedLabels).toEqual([])
   })
 
   it('поддерживает запятую как разделитель', () => {
@@ -81,14 +81,44 @@ describe('parseParticipantsCsv', () => {
   it('ранг можно опустить — ставится дефолт без предупреждения', () => {
     const result = parseParticipantsCsv('Иванов Иван')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
-    expect(result.unrecognizedPosition).toEqual([])
+    expect(result.unrecognizedLabels).toEqual([])
   })
 
-  it('нераспознанный ранг помечается', () => {
+  it('нераспознанный ранг собирается в unrecognizedLabels', () => {
     const result = parseParticipantsCsv('Иванов Иван;шофёр\nПетров Пётр;senior plus')
     expect(result.rows[0]).toEqual({ fullName: 'Иванов Иван', position: FALLBACK_POSITION })
-    expect(result.unrecognizedPosition).toEqual(['Иванов Иван'])
+    expect(result.unrecognizedLabels).toEqual(['шофёр'])
     expect(result.rows).toHaveLength(2)
+  })
+
+  it('нераспознанные ранги не дублируются (без учёта регистра и ё)', () => {
+    const result = parseParticipantsCsv('Иванов;Шофёр\nПетров;шофёр\nСидоров;Шофер')
+    expect(result.unrecognizedLabels).toEqual(['Шофёр'])
+    expect(result.rows).toHaveLength(3)
+  })
+
+  it('читает формат собственного экспорта «Команда;ФИО;Ранг;Прозвище;Вес»', () => {
+    const result = parseParticipantsCsv(
+      'Команда;ФИО;Ранг;Прозвище;Вес\r\n' +
+        'Команда 1;Иванов Иван;Middle plus;Дикая утка;4\r\n' +
+        'Команда 2;Петров Пётр;Шофёр;Задумчивый медведь;1',
+    )
+    expect(result.rows).toEqual([
+      { fullName: 'Иванов Иван', position: 'middle-plus', nickname: 'Дикая утка' },
+      { fullName: 'Петров Пётр', position: FALLBACK_POSITION, nickname: 'Задумчивый медведь' },
+    ])
+    expect(result.unrecognizedLabels).toEqual(['Шофёр'])
+    expect(result.skippedLines).toBe(0)
+  })
+
+  it('срезает BOM в начале файла (экспорт добавляет его для Excel)', () => {
+    const result = parseParticipantsCsv('\uFEFFФИО;Ранг\nИванов Иван;junior plus')
+    expect(result.rows).toEqual([{ fullName: 'Иванов Иван', position: 'junior-plus' }])
+  })
+
+  it('кавычки по RFC: разделитель и кавычки внутри ячейки', () => {
+    const result = parseParticipantsCsv('ФИО;Ранг\n"Иванов; ""странный""";middle plus')
+    expect(result.rows[0]).toEqual({ fullName: 'Иванов; "странный"', position: 'middle-plus' })
   })
 
   it('строка без ФИО считается пропущенной', () => {

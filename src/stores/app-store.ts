@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { FALLBACK_POSITION, parseParticipantsCsv } from '@/domain/csv'
 import { uid } from '@/domain/id'
 import { generateNickname } from '@/domain/nicknames'
 import {
   DEFAULT_WEIGHTS,
   isLabelTaken,
   shortFromLabel,
+  weightOfPosition,
   type BuiltinPosition,
   type CustomPosition,
 } from '@/domain/positions'
@@ -45,6 +47,15 @@ function normalizeTeamNames(names: readonly string[], teamCount: number): string
   return Array.from({ length: teamCount }, (_, i) => names[i] ?? '')
 }
 
+/** Итог импорта CSV для баннера на странице участников */
+export interface CsvImportSummary {
+  added: number
+  /** Названия рангов, созданных из нераспознанных значений в файле */
+  createdRanks: string[]
+  /** Непустые строки без ФИО */
+  skipped: number
+}
+
 interface AppState {
   participants: Participant[]
   settings: Settings
@@ -55,6 +66,11 @@ interface AppState {
   addParticipant: (input: ParticipantInput) => string | undefined
   /** Массовое добавление (импорт CSV), возвращает число добавленных */
   addParticipants: (items: readonly ParticipantInput[]) => number
+  /**
+   * Импорт участников из CSV: нераспознанные ранги становятся пользовательскими
+   * с весом Junior minus, участники получают уже созданные ранги
+   */
+  importParticipantsCsv: (text: string) => CsvImportSummary
   updateParticipant: (
     id: string,
     patch: Partial<Pick<Participant, 'fullName' | 'position' | 'nickname'>>,
@@ -192,6 +208,23 @@ export const useAppStore = create<AppState>()(
         }
         set((state) => ({ participants: [...state.participants, ...added] }))
         return added.length
+      },
+
+      importParticipantsCsv: (text) => {
+        const state = get()
+        let parsed = parseParticipantsCsv(text, state.settings.customPositions)
+        const createdRanks: string[] = []
+        if (parsed.unrecognizedLabels.length > 0) {
+          // Нераспознанные ранги — пользовательские, с весом дефолтного ранга (Junior minus)
+          const fallbackWeight = weightOfPosition(FALLBACK_POSITION, state.settings)
+          for (const label of parsed.unrecognizedLabels) {
+            if (get().addCustomPosition(label, fallbackWeight)) createdRanks.push(label)
+          }
+          // Разбираем файл заново — участники получают созданные ранги, а не дефолт
+          parsed = parseParticipantsCsv(text, get().settings.customPositions)
+        }
+        const added = get().addParticipants(parsed.rows)
+        return { added, createdRanks, skipped: parsed.skippedLines }
       },
 
       updateParticipant: (id, patch) => {

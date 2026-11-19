@@ -222,6 +222,44 @@ describe('пользовательские ранги', () => {
   })
 })
 
+describe('импорт CSV с рангами', () => {
+  it('нераспознанный ранг становится пользовательским с весом Junior minus', () => {
+    const summary = useAppStore
+      .getState()
+      .importParticipantsCsv('Иванов;Шофёр\nПетров;senior plus\n;middle minus')
+    expect(summary).toEqual({ added: 2, createdRanks: ['Шофёр'], skipped: 1 })
+
+    const state = useAppStore.getState()
+    const custom = state.settings.customPositions
+    expect(custom).toHaveLength(1)
+    expect(custom[0]).toMatchObject({
+      label: 'Шофёр',
+      short: 'ШОФ',
+      weight: DEFAULT_SETTINGS.weights['junior-minus'],
+    })
+    // участник получил созданный ранг, а не дефолт
+    expect(state.participants[0]).toMatchObject({ fullName: 'Иванов', position: custom[0]!.id })
+    expect(state.participants[1]).toMatchObject({ fullName: 'Петров', position: 'senior-plus' })
+  })
+
+  it('существующий пользовательский ранг не дублируется', () => {
+    const existingId = useAppStore.getState().addCustomPosition('Тимлид', 5)!
+    const summary = useAppStore.getState().importParticipantsCsv('Иванов;тимлид\nПетров;Директор')
+    expect(summary.createdRanks).toEqual(['Директор'])
+
+    const state = useAppStore.getState()
+    expect(state.settings.customPositions.map((p) => p.label)).toEqual(['Тимлид', 'Директор'])
+    expect(state.participants[0]!.position).toBe(existingId)
+  })
+
+  it('повторный импорт того же файла не плодит ранги', () => {
+    useAppStore.getState().importParticipantsCsv('Иванов;Шофёр')
+    const summary = useAppStore.getState().importParticipantsCsv('Иванов;Шофёр')
+    expect(summary.createdRanks).toEqual([])
+    expect(useAppStore.getState().settings.customPositions).toHaveLength(1)
+  })
+})
+
 describe('правила', () => {
   it('addRule не даёт правило на самого себя', () => {
     const a = useAppStore.getState().addParticipant({ fullName: 'А', position: 'junior-minus' })!

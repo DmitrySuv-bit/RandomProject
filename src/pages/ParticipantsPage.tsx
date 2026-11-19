@@ -1,40 +1,27 @@
 import { useState } from 'react'
-import { parseParticipantsCsv } from '@/domain/csv'
 import { makeDemoParticipants } from '@/domain/demo'
-import { useAppStore } from '@/stores/app-store'
+import { useAppStore, type CsvImportSummary } from '@/stores/app-store'
 import { Button } from '@/components/ui/Button'
 import { AddParticipantForm } from '@/components/participants/AddParticipantForm'
 import { ImportCsvButton } from '@/components/participants/ImportCsvButton'
 import { ParticipantsTable } from '@/components/participants/ParticipantsTable'
 
-interface ImportSummary {
-  added: number
-  unrecognized: string[]
-  skipped: number
-}
-
 export function ParticipantsPage() {
   const participants = useAppStore((s) => s.participants)
-  const settings = useAppStore((s) => s.settings)
   const addParticipants = useAppStore((s) => s.addParticipants)
+  const importParticipantsCsv = useAppStore((s) => s.importParticipantsCsv)
   const regenerateAllNicknames = useAppStore((s) => s.regenerateAllNicknames)
 
-  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
+  const [importSummary, setImportSummary] = useState<CsvImportSummary | null>(null)
 
   const handleCsvFile = async (file: File) => {
     const text = await file.text()
-    const parsed = parseParticipantsCsv(text, settings.customPositions)
-    const added = addParticipants(parsed.rows)
-    setImportSummary({
-      added,
-      unrecognized: parsed.unrecognizedPosition,
-      skipped: parsed.skippedLines,
-    })
+    setImportSummary(importParticipantsCsv(text))
   }
 
   const handleDemo = () => {
     const added = addParticipants(makeDemoParticipants())
-    setImportSummary({ added, unrecognized: [], skipped: 0 })
+    setImportSummary({ added, createdRanks: [], skipped: 0 })
   }
 
   return (
@@ -65,8 +52,8 @@ export function ParticipantsPage() {
   )
 }
 
-function ImportBanner({ summary, onClose }: { summary: ImportSummary; onClose: () => void }) {
-  const { added, unrecognized, skipped } = summary
+function ImportBanner({ summary, onClose }: { summary: CsvImportSummary; onClose: () => void }) {
+  const { added, createdRanks, skipped } = summary
   const nothing = added === 0
 
   return (
@@ -85,9 +72,9 @@ function ImportBanner({ summary, onClose }: { summary: ImportSummary; onClose: (
           ) : (
             <p className="font-medium">Добавлено участников: {added}</p>
           )}
-          {unrecognized.length > 0 && (
+          {createdRanks.length > 0 && (
             <p className="text-amber-600 dark:text-amber-400">
-              Ранг не распознан (поставлен Junior minus): {unrecognized.join(', ')}
+              Новые ранги добавлены в настройки (вес как у Junior minus): {createdRanks.join(', ')}
             </p>
           )}
           {skipped > 0 && <p className="opacity-70">Пропущено строк без ФИО: {skipped}</p>}

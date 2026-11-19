@@ -4,9 +4,14 @@ import type { ParticipantInput } from './types'
 /** Ранг по умолчанию, если в CSV он не указан или не распознан */
 export const FALLBACK_POSITION: Position = 'junior-minus'
 
+/** Нормализация для сравнения названий: без регистра, ё→е, без краёв */
+function normalizeLabel(raw: string): string {
+  return raw.toLowerCase().replace(/ё/g, 'е').trim()
+}
+
 /** Точное совпадение с названием пользовательского ранга (без учёта регистра) */
 function matchCustomPosition(raw: string, customPositions: readonly CustomPosition[]): Position | null {
-  const normalized = raw.toLowerCase().replace(/ё/g, 'е').trim()
+  const normalized = normalizeLabel(raw)
   if (!normalized) return null
   const match = customPositions.find(
     (p) => p.label.toLowerCase().replace(/ё/g, 'е').trim() === normalized,
@@ -46,8 +51,8 @@ export function parsePositionValue(
 
 export interface CsvImportResult {
   rows: ParticipantInput[]
-  /** Участники с нераспознанным рангом (заменён на Junior minus) */
-  unrecognizedPosition: string[]
+  /** Нераспознанные ранги (уникальные, в порядке появления); строкам поставлен Junior minus */
+  unrecognizedLabels: string[]
   /** Непустые строки без ФИО */
   skippedLines: number
 }
@@ -59,56 +64,118 @@ function detectDelimiter(sample: string): string {
   return semicolons >= commas ? ';' : ','
 }
 
-/** Похоже ли первая строка на заголовок («ФИО;Ранг»; старый вариант «Должность» тоже принимаем) */
-function looksLikeHeader(cells: string[]): boolean {
+/** Разбивает строку CSV с учётом кавычек (RFC 4180): `a;"b;c";"d""e"` → ['a', 'b;c', 'd"e'] */
+function splitCsvLine(line: string, delimiter: string): string[] {
+  const cells: string[] = []
+  let current = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]!
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          current += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        current += char
+      }
+    } else if (char === '"') {
+      inQuotes = true
+    } else if (char === delimiter) {
+      cells.push(current)
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  cells.push(current)
+  return cells.map((cell) => cell.trim())
+}
+
+/** Номера значимых колонок в строке данных */
+interface ColumnIndexes {
+  name: number
+  position: number
+  nickname: number | null
+}
+
+/** Колонки по умолчанию (файл без заголовка): «ФИО;Ранг» */
+const DEFAULT_COLUMNS: ColumnIndexes = { name: 0, position: 1, nickname: null }
+
+/**
+ * Разбирает строку заголовка на номера колонок по названиям: «ФИО»,
+ * «Ранг» (или старый «Должность»), «Прозвище». Так понимается и формат
+ * собственного экспорта «Команда;ФИО;Ранг;Прозвище;Вес» — колонки
+ * «Команда» и «Вес» просто игнорируются.
+ * null — строка не похожа на заголовок.
+ */
+function columnsFromHeader(cells: string[]): ColumnIndexes | null {
   const normalized = cells.map((cell) => cell.trim().toLowerCase())
-  return normalized.some((cell) => cell === 'фио' || cell.startsWith('ранг') || cell.startsWith('должност'))
+  const name = normalized.findIndex((cell) => cell === 'фио')
+  const position = normalized.findIndex(
+    (cell) => cell.startsWith('ранг') || cell.startsWith('должност'),
+  )
+  if (name === -1 && position === -1) return null
+  const nickname = normalized.findIndex((cell) => cell.startsWith('прозвищ'))
+  return {
+    name: name === -1 ? DEFAULT_COLUMNS.name : name,
+    position: position === -1 ? DEFAULT_COLUMNS.position : position,
+    nickname: nickname === -1 ? null : nickname,
+  }
 }
 
 /**
  * Разбор CSV со списком участников.
- * Формат строки: «ФИО;Ранг» (или через запятую). Ранг можно опустить.
- * Кавычки по RFC не разбираются — ФИО с разделителем внутри не поддерживается.
+ * Без заголовка формат строки: «ФИО;Ранг» (или через запятую), ранг можно опустить.
+ * С заголовком колонки определяются по названиям — так читается и собственный
+ * экспорт «Команда;ФИО;Ранг;Прозвище;Вес» (прозвища восстанавливаются,
+ * команда и вес игнорируются). Кавычки разбираются по RFC 4180, BOM срезается.
  * Ранг ищется среди встроенных (толерантно) и пользовательских (по названию).
+ * Нераспознанные названия собираются в unrecognizedLabels — вызывающая сторона
+ * может создать из них пользовательские ранги и разобрать файл заново.
  */
 export function parseParticipantsCsv(
   text: string,
   customPositions: readonly CustomPosition[] = [],
 ): CsvImportResult {
-  const lines = text.split(/\r?\n/)
-  const result: CsvImportResult = { rows: [], unrecognizedPosition: [], skippedLines: 0 }
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/)
+  const result: CsvImportResult = { rows: [], unrecognizedLabels: [], skippedLines: 0 }
 
   let index = 0
   while (index < lines.length && lines[index]!.trim() === '') index++
   if (index >= lines.length) return result
 
   const delimiter = detectDelimiter(lines[index]!)
-  if (looksLikeHeader(lines[index]!.split(delimiter))) index++
+  const columns = columnsFromHeader(splitCsvLine(lines[index]!, delimiter))
+  if (columns) index++
+  const cols = columns ?? DEFAULT_COLUMNS
 
   for (; index < lines.length; index++) {
     const line = lines[index]!
     if (line.trim() === '') continue
-    const cells = line.split(delimiter).map((cell) => cell.trim())
+    const cells = splitCsvLine(line, delimiter)
 
-    const fullName = cells[0] ?? ''
+    const fullName = cells[cols.name] ?? ''
     if (!fullName) {
       result.skippedLines++
       continue
     }
 
-    const positionRaw = cells[1] ?? ''
-    if (!positionRaw) {
-      result.rows.push({ fullName, position: FALLBACK_POSITION })
-      continue
+    const positionRaw = cells[cols.position] ?? ''
+    const recognized = positionRaw ? parsePositionValue(positionRaw, customPositions) : null
+    if (positionRaw && !recognized) {
+      const isNew = !result.unrecognizedLabels.some(
+        (label) => normalizeLabel(label) === normalizeLabel(positionRaw),
+      )
+      if (isNew) result.unrecognizedLabels.push(positionRaw)
     }
+    const position = recognized ?? FALLBACK_POSITION
 
-    const position = parsePositionValue(positionRaw, customPositions)
-    if (position) {
-      result.rows.push({ fullName, position })
-    } else {
-      result.rows.push({ fullName, position: FALLBACK_POSITION })
-      result.unrecognizedPosition.push(fullName)
-    }
+    const nickname = (cols.nickname !== null ? cells[cols.nickname] ?? '' : '').trim()
+    result.rows.push(nickname ? { fullName, position, nickname } : { fullName, position })
   }
 
   return result
