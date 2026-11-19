@@ -23,7 +23,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-6">
         {activeTab === 'participants' && <ParticipantsPage />}
         {activeTab === 'settings' && <SettingsPage />}
         {activeTab === 'results' && <ResultsPage />}

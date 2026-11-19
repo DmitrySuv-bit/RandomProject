@@ -1,5 +1,6 @@
 import { uid } from '@/domain/id'
 import { distributionSignature } from '@/domain/distribution-signature'
+import { weightOfPosition } from '@/domain/positions'
 import { generateTeamName } from '@/domain/team-names'
 import type { DistributionResult, Participant, Settings } from '@/domain/types'
 import { buildClusters } from './clusters'
@@ -46,7 +47,9 @@ export function distribute(
     levelCaps: clustering.levelCaps,
     minSize: min,
     maxSize: max,
-    weightOf: new Map(participants.map((p) => [p.id, settings.weights[p.position]] as const)),
+    weightOf: new Map(
+      participants.map((p) => [p.id, weightOfPosition(p.position, settings)] as const),
+    ),
     positionOf: new Map(participants.map((p) => [p.id, p.position] as const)),
   }
 

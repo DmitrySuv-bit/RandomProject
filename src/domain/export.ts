@@ -1,4 +1,4 @@
-import { POSITION_BY_ID } from './positions'
+import { resolvePosition, weightOfPosition } from './positions'
 import type { DistributionResult, Participant, Settings } from './types'
 
 /** Экранирование ячейки CSV (RFC 4180: кавычки, разделители, переводы строк) */
@@ -29,9 +29,9 @@ export function teamsToCsv(
         [
           team.name,
           participant.fullName,
-          POSITION_BY_ID[participant.position].label,
+          resolvePosition(participant.position, settings)?.label ?? String(participant.position),
           participant.nickname,
-          String(settings.weights[participant.position]),
+          String(weightOfPosition(participant.position, settings)),
         ]
           .map(escapeCell)
           .join(';'),

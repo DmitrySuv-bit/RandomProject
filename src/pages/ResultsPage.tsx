@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { computeReport } from '@/distribution/report'
 import { distribute } from '@/distribution/distribute'
 import { validateDistributionInput, type DistributionIssue } from '@/distribution/validate'
 import { distributionSignature } from '@/domain/distribution-signature'
 import { csvFileName, downloadCsv, teamsToCsv } from '@/domain/export'
+import { weightOfPosition } from '@/domain/positions'
 import { useAppStore } from '@/stores/app-store'
 import { useUiStore } from '@/stores/ui-store'
 import { Button } from '@/components/ui/Button'
@@ -39,6 +40,15 @@ export function ResultsPage() {
 
   const byId = useMemo(() => new Map(participants.map((p) => [p.id, p] as const)), [participants])
 
+  /* Поиск по ФИО: совпадения подсвечиваются в карточках команд */
+  const [query, setQuery] = useState('')
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    return participants.filter((p) => p.fullName.toLowerCase().includes(q))
+  }, [query, participants])
+  const matchIds = useMemo(() => new Set(matches.map((m) => m.id)), [matches])
+
   const handleDistribute = () => {
     if (issues.length > 0) return
     const next = distribute(participants, settings)
@@ -62,6 +72,35 @@ export function ResultsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-xl font-bold">Результат</h2>
+        {result && (
+          <div className="relative">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400"
+            >
+              🔍
+            </span>
+            <input
+              type="text"
+              value={query}
+              placeholder="Поиск по ФИО…"
+              aria-label="Поиск участника по ФИО"
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setQuery('')
+              }}
+              className="w-52 rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-500"
+            />
+            {query.trim() !== '' && (
+              <span
+                title={matches.length > 0 ? `Найдено: ${matches.length}` : 'Никого не найдено'}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400 dark:text-slate-500"
+              >
+                {matches.length > 0 ? matches.length : '∅'}
+              </span>
+            )}
+          </div>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button onClick={handleExport} disabled={!result}>
             💾 Экспорт CSV
@@ -92,7 +131,7 @@ export function ResultsPage() {
           <ReportPanel report={report} teams={result.teams} onRenameTeam={renameTeam} />
 
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {result.teams.map((team, index) => (
                 <TeamCard
                   key={team.id}
@@ -100,7 +139,8 @@ export function ResultsPage() {
                   index={index}
                   balance={report.balance.find((b) => b.teamId === team.id)}
                   participantsById={byId}
-                  weights={settings.weights}
+                  weightOf={(position) => weightOfPosition(position, settings)}
+                  highlightedIds={matchIds}
                   onRename={(name) => renameTeam(team.id, name)}
                 />
               ))}

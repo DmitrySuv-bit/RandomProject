@@ -355,4 +355,29 @@ describe('distribute — подпись входа', () => {
     const repositioned = participants.map((p, i) => (i === 0 ? { ...p, position: 'senior-plus' as const } : p))
     expect(result.sourceSignature).not.toBe(distributionSignature(repositioned, settings))
   })
+
+  it('пользовательская должность участвует в весах, балансе и подписи', () => {
+    const lead = { id: 'lead', label: 'Тимлид', short: 'ТИМ', weight: 10 }
+    const participants: Participant[] = [
+      ...makeParticipants([
+        ['А', 3],
+        ['Б', 3],
+      ]),
+      { id: uid(), fullName: 'Лид', position: lead.id, nickname: '' },
+    ]
+    const settings = makeSettings({ teamCount: 2, customPositions: [lead] })
+    const result = distribute(participants, settings, { seed: SEED })
+
+    // суммарный вес всех команд учитывает вес кастомной должности
+    const total = result.report.balance.reduce((sum, b) => sum + b.totalWeight, 0)
+    expect(total).toBe(3 + 3 + 10)
+
+    // смена веса кастомной должности меняет подпись
+    expect(result.sourceSignature).toBe(distributionSignature(participants, settings))
+    const changed = makeSettings({
+      teamCount: 2,
+      customPositions: [{ ...lead, weight: 11 }],
+    })
+    expect(result.sourceSignature).not.toBe(distributionSignature(participants, changed))
+  })
 })

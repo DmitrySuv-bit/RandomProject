@@ -11,7 +11,7 @@ interface EditableTeamNameProps {
 }
 
 const BUTTON_BASE =
-  'block w-full min-w-0 truncate rounded-sm text-left hover:underline hover:decoration-dotted hover:decoration-slate-400 hover:underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:decoration-slate-500'
+  'block w-full min-w-0 rounded-sm text-left hover:underline hover:decoration-dotted hover:decoration-slate-400 hover:underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:decoration-slate-500'
 const INPUT_BASE =
   'block w-full min-w-0 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-indigo-500 dark:bg-slate-900 dark:text-white'
 

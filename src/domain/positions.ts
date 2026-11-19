@@ -1,4 +1,6 @@
-/** Должности участников (порядок — по возрастанию веса) */
+import type { Settings } from './types'
+
+/** Встроенные должности (порядок — по возрастанию веса) */
 export const POSITION_IDS = [
   'junior-minus',
   'junior-plus',
@@ -8,10 +10,26 @@ export const POSITION_IDS = [
   'senior-plus',
 ] as const
 
-export type Position = (typeof POSITION_IDS)[number]
+export type BuiltinPosition = (typeof POSITION_IDS)[number]
+
+/**
+ * Должность: одна из встроенных или id пользовательской должности.
+ * Открытый строковый тип — `(string & {})` сохраняет автодополнение литералов.
+ */
+export type Position = BuiltinPosition | (string & {})
+
+/** Пользовательская должность, созданная в настройках */
+export interface CustomPosition {
+  id: string
+  /** Отображаемое название */
+  label: string
+  /** Короткая метка для бейджей */
+  short: string
+  weight: number
+}
 
 export interface PositionInfo {
-  id: Position
+  id: BuiltinPosition
   /** Отображаемое название */
   label: string
   /** Короткая метка для бейджей */
@@ -28,14 +46,66 @@ export const POSITIONS: readonly PositionInfo[] = [
   { id: 'senior-plus', label: 'Senior plus', short: 'S+', defaultWeight: 6 },
 ]
 
-export const POSITION_BY_ID: Readonly<Record<Position, PositionInfo>> = Object.fromEntries(
+export const POSITION_BY_ID: Readonly<Record<BuiltinPosition, PositionInfo>> = Object.fromEntries(
   POSITIONS.map((p) => [p.id, p]),
-) as Record<Position, PositionInfo>
+) as Record<BuiltinPosition, PositionInfo>
 
-export const DEFAULT_WEIGHTS: Record<Position, number> = Object.fromEntries(
+export const DEFAULT_WEIGHTS: Record<BuiltinPosition, number> = Object.fromEntries(
   POSITIONS.map((p) => [p.id, p.defaultWeight]),
-) as Record<Position, number>
+) as Record<BuiltinPosition, number>
 
-export function isPosition(value: unknown): value is Position {
+export function isPosition(value: unknown): value is BuiltinPosition {
   return typeof value === 'string' && (POSITION_IDS as readonly string[]).includes(value)
+}
+
+/** Должность с актуальным весом: встроенная или пользовательская */
+export interface ResolvedPosition {
+  id: Position
+  label: string
+  short: string
+  weight: number
+  builtin: boolean
+}
+
+/** Все должности: встроенные (вес из настроек) + пользовательские */
+export function resolvePositions(settings: Settings): ResolvedPosition[] {
+  const builtins: ResolvedPosition[] = POSITIONS.map((p) => ({
+    id: p.id,
+    label: p.label,
+    short: p.short,
+    weight: settings.weights[p.id],
+    builtin: true,
+  }))
+  const customs: ResolvedPosition[] = settings.customPositions.map((p) => ({
+    id: p.id,
+    label: p.label,
+    short: p.short,
+    weight: p.weight,
+    builtin: false,
+  }))
+  return [...builtins, ...customs]
+}
+
+/** Информация о должности по id; undefined для неизвестного id (например, удалённой) */
+export function resolvePosition(id: Position, settings: Settings): ResolvedPosition | undefined {
+  return resolvePositions(settings).find((p) => p.id === id)
+}
+
+/** Актуальный вес должности (0 для неизвестного id — на случай внешних данных) */
+export function weightOfPosition(id: Position, settings: Settings): number {
+  if (isPosition(id)) return settings.weights[id]
+  return settings.customPositions.find((p) => p.id === id)?.weight ?? 0
+}
+
+/** Короткая метка из названия: первые буквы слов, до 3 символов */
+export function shortFromLabel(label: string): string {
+  const letters = label.replaceAll(/\s+/g, '').slice(0, 3).toUpperCase()
+  return letters || '?'
+}
+
+/** Занято ли такое название должности (без учёта регистра) */
+export function isLabelTaken(label: string, settings: Settings): boolean {
+  const normalized = label.trim().toLowerCase()
+  if (!normalized) return true
+  return resolvePositions(settings).some((p) => p.label.toLowerCase() === normalized)
 }

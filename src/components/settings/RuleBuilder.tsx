@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { POSITIONS, type Position } from '@/domain/positions'
+import { resolvePositions, type Position } from '@/domain/positions'
 import type { Participant } from '@/domain/types'
 import { useAppStore } from '@/stores/app-store'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +15,7 @@ const MODES: ReadonlyArray<{ id: RuleMode; label: string }> = [
 /** Конструктор правил: пары «вместе»/«раздельно» и лимиты должностей */
 export function RuleBuilder() {
   const participants = useAppStore((s) => s.participants)
+  const settings = useAppStore((s) => s.settings)
   const addRule = useAppStore((s) => s.addRule)
 
   const [mode, setMode] = useState<RuleMode>('together')
@@ -104,7 +105,7 @@ export function RuleBuilder() {
             aria-label="Должность лимита"
             className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
-            {POSITIONS.map((position) => (
+            {resolvePositions(settings).map((position) => (
               <option key={position.id} value={position.id}>
                 {position.label}
               </option>

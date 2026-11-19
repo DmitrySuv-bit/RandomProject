@@ -1,4 +1,5 @@
 import { describeRule } from '@/domain/rules'
+import { resolvePosition, weightOfPosition } from '@/domain/positions'
 import type { Participant, Report, RuleResult, Settings, TeamBalance } from '@/domain/types'
 
 interface TeamLike {
@@ -26,7 +27,10 @@ export function computeReport(
 
   const balance: TeamBalance[] = teams.map((team) => {
     const members = team.memberIds.map((id) => byId.get(id)).filter((p) => p !== undefined)
-    const totalWeight = members.reduce((sum, p) => sum + settings.weights[p!.position], 0)
+    const totalWeight = members.reduce(
+      (sum, p) => sum + weightOfPosition(p!.position, settings),
+      0,
+    )
     return {
       teamId: team.id,
       count: members.length,
@@ -42,7 +46,11 @@ export function computeReport(
   for (const rule of settings.rules) {
     if (!rule.enabled) continue
 
-    const label = describeRule(rule, (id) => byId.get(id))
+    const label = describeRule(
+      rule,
+      (id) => byId.get(id),
+      (position) => resolvePosition(position, settings)?.label ?? String(position),
+    )
     const base = { ruleId: rule.id, label }
 
     const impossibleReason = impossibleRules.get(rule.id)

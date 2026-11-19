@@ -1,4 +1,4 @@
-import type { Position } from './positions'
+import type { BuiltinPosition, CustomPosition, Position } from './positions'
 
 /** Участник */
 export interface Participant {
@@ -47,7 +47,6 @@ export interface LevelCapRule extends RuleBase {
   position: Position
   maxPerTeam: number
 }
-
 export type Rule = TogetherRule | SeparateRule | LevelCapRule
 
 /** Данные для создания правила (id и enabled проставляет стор) */
@@ -66,8 +65,10 @@ export interface Settings {
   sizingMode: SizingMode
   minSize: number
   maxSize: number
-  /** Настраиваемые веса должностей */
-  weights: Record<Position, number>
+  /** Настраиваемые веса встроенных должностей */
+  weights: Record<BuiltinPosition, number>
+  /** Пользовательские должности со своими весами */
+  customPositions: CustomPosition[]
   /** Правила совместного/раздельного размещения */
   rules: Rule[]
 }

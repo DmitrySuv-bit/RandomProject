@@ -1,13 +1,16 @@
-import { POSITION_BY_ID } from './positions'
+import { POSITION_BY_ID, type Position } from './positions'
 import type { Participant, Rule } from './types'
 
 /**
  * Человекочитаемое описание правила — для списка правил и отчёта.
  * `getParticipant` может вернуть undefined (участник удалён).
+ * `positionLabelOf` возвращает название должности (встроенной или пользовательской).
  */
 export function describeRule(
   rule: Rule,
   getParticipant: (id: string) => Participant | undefined,
+  positionLabelOf: (position: Position) => string = (position) =>
+    POSITION_BY_ID[position as keyof typeof POSITION_BY_ID]?.label ?? String(position),
 ): string {
   const nameOf = (id: string): string => getParticipant(id)?.fullName ?? 'удалённый участник'
 
@@ -17,8 +20,7 @@ export function describeRule(
     case 'separate':
       return `«${nameOf(rule.a)}» и «${nameOf(rule.b)}» — в разных командах`
     case 'level-cap': {
-      const info = POSITION_BY_ID[rule.position]
-      return `не больше ${rule.maxPerTeam} × ${info.label} в команде`
+      return `не больше ${rule.maxPerTeam} × ${positionLabelOf(rule.position)} в команде`
     }
   }
 }

@@ -179,6 +179,49 @@ describe('настройки', () => {
   })
 })
 
+describe('пользовательские должности', () => {
+  it('addCustomPosition создаёт должность и режет пробелы', () => {
+    const id = useAppStore.getState().addCustomPosition('  Тимлид  ', 7)
+    expect(id).toBeTruthy()
+    const position = useAppStore.getState().settings.customPositions[0]!
+    expect(position.id).toBe(id)
+    expect(position.label).toBe('Тимлид')
+    expect(position.short).toBe('ТИМ')
+    expect(position.weight).toBe(7)
+  })
+
+  it('addCustomPosition отклоняет дубль названия (встроенного или своего)', () => {
+    expect(useAppStore.getState().addCustomPosition('  junior plus ', 5)).toBeUndefined()
+    useAppStore.getState().addCustomPosition('Тимлид', 7)
+    expect(useAppStore.getState().addCustomPosition('тимлид', 9)).toBeUndefined()
+    expect(useAppStore.getState().settings.customPositions).toHaveLength(1)
+  })
+
+  it('addCustomPosition ограничивает вес', () => {
+    useAppStore.getState().addCustomPosition('QA', 999)
+    expect(useAppStore.getState().settings.customPositions[0]!.weight).toBe(99)
+  })
+
+  it('setCustomPositionWeight меняет вес', () => {
+    const id = useAppStore.getState().addCustomPosition('QA', 2)!
+    useAppStore.getState().setCustomPositionWeight(id, 5)
+    expect(useAppStore.getState().settings.customPositions[0]!.weight).toBe(5)
+  })
+
+  it('removeCustomPosition не даёт удалить должность, используемую участником или правилом', () => {
+    const id = useAppStore.getState().addCustomPosition('Тимлид', 7)!
+    useAppStore.getState().addParticipant({ fullName: 'А', position: id })
+    expect(useAppStore.getState().removeCustomPosition(id)).toBe(false)
+    expect(useAppStore.getState().settings.customPositions).toHaveLength(1)
+
+    // должность свободна после смены — удаление проходит
+    const person = useAppStore.getState().participants[0]!
+    useAppStore.getState().updateParticipant(person.id, { position: 'senior-plus' })
+    expect(useAppStore.getState().removeCustomPosition(id)).toBe(true)
+    expect(useAppStore.getState().settings.customPositions).toHaveLength(0)
+  })
+})
+
 describe('правила', () => {
   it('addRule не даёт правило на самого себя', () => {
     const a = useAppStore.getState().addParticipant({ fullName: 'А', position: 'junior-minus' })!

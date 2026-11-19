@@ -13,6 +13,6 @@ export function distributionSignature(
     .map((p) => `${p.id}:${p.position}`)
     .sort()
     .join(',')
-  const { teamCount, sizingMode, minSize, maxSize, weights, rules } = settings
-  return JSON.stringify([people, teamCount, sizingMode, minSize, maxSize, weights, rules])
+  const { teamCount, sizingMode, minSize, maxSize, weights, customPositions, rules } = settings
+  return JSON.stringify([people, teamCount, sizingMode, minSize, maxSize, weights, customPositions, rules])
 }

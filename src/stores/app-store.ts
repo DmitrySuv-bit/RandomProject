@@ -2,7 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { uid } from '@/domain/id'
 import { generateNickname } from '@/domain/nicknames'
-import { DEFAULT_WEIGHTS, type Position } from '@/domain/positions'
+import {
+  DEFAULT_WEIGHTS,
+  isLabelTaken,
+  shortFromLabel,
+  type BuiltinPosition,
+  type CustomPosition,
+} from '@/domain/positions'
 import { generateTeamName } from '@/domain/team-names'
 import { teamDisplayName } from '@/domain/teams'
 import type {
@@ -22,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   minSize: 3,
   maxSize: 10,
   weights: { ...DEFAULT_WEIGHTS },
+  customPositions: [],
   rules: [],
 }
 
@@ -67,7 +74,13 @@ interface AppState {
   generateTeamNames: () => void
   setSizingMode: (mode: SizingMode) => void
   setSizeLimits: (min: number, max: number) => void
-  setWeight: (position: Position, weight: number) => void
+  setWeight: (position: BuiltinPosition, weight: number) => void
+  /** Добавляет пользовательскую должность, возвращает id (undefined — пустое или занятое название) */
+  addCustomPosition: (label: string, weight: number) => string | undefined
+  /** Меняет вес пользовательской должности */
+  setCustomPositionWeight: (id: string, weight: number) => void
+  /** Удаляет пользовательскую должность (false — используется участниками или правилами) */
+  removeCustomPosition: (id: string) => boolean
 
   /* Правила */
   /** Добавляет правило, возвращает id (undefined — некорректный ввод или дубль) */
@@ -308,6 +321,48 @@ export const useAppStore = create<AppState>()(
             weights: { ...state.settings.weights, [position]: clamp(weight, WEIGHT_LIMITS) },
           },
         }))
+      },
+
+      addCustomPosition: (label, weight) => {
+        const name = label.trim()
+        if (!name || isLabelTaken(name, get().settings)) return undefined
+        const position: CustomPosition = {
+          id: uid(),
+          label: name,
+          short: shortFromLabel(name),
+          weight: clamp(weight, WEIGHT_LIMITS),
+        }
+        set((state) => ({
+          settings: { ...state.settings, customPositions: [...state.settings.customPositions, position] },
+        }))
+        return position.id
+      },
+
+      setCustomPositionWeight: (id, weight) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            customPositions: state.settings.customPositions.map((p) =>
+              p.id === id ? { ...p, weight: clamp(weight, WEIGHT_LIMITS) } : p,
+            ),
+          },
+        }))
+      },
+
+      removeCustomPosition: (id) => {
+        const state = get()
+        const usedByParticipants = state.participants.some((p) => p.position === id)
+        const usedByRules = state.settings.rules.some(
+          (rule) => rule.type === 'level-cap' && rule.position === id,
+        )
+        if (usedByParticipants || usedByRules) return false
+        set((current) => ({
+          settings: {
+            ...current.settings,
+            customPositions: current.settings.customPositions.filter((p) => p.id !== id),
+          },
+        }))
+        return true
       },
 
       addRule: (input) => {

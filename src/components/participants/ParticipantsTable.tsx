@@ -1,4 +1,4 @@
-import { POSITION_BY_ID } from '@/domain/positions'
+import { resolvePosition, weightOfPosition } from '@/domain/positions'
 import { useAppStore } from '@/stores/app-store'
 import { IconButton } from '@/components/ui/IconButton'
 import { PositionSelect } from './PositionSelect'
@@ -6,7 +6,7 @@ import { PositionSelect } from './PositionSelect'
 /** Таблица участников: ФИО, должность, прозвище и действия */
 export function ParticipantsTable() {
   const participants = useAppStore((s) => s.participants)
-  const weights = useAppStore((s) => s.settings.weights)
+  const settings = useAppStore((s) => s.settings)
   const updateParticipant = useAppStore((s) => s.updateParticipant)
   const removeParticipant = useAppStore((s) => s.removeParticipant)
   const regenerateNickname = useAppStore((s) => s.regenerateNickname)
@@ -49,7 +49,7 @@ export function ParticipantsTable() {
         </thead>
         <tbody>
           {participants.map((participant, index) => {
-            const info = POSITION_BY_ID[participant.position]
+            const info = resolvePosition(participant.position, settings)
             return (
               <tr
                 key={participant.id}
@@ -64,10 +64,10 @@ export function ParticipantsTable() {
                       onChange={(position) => updateParticipant(participant.id, { position })}
                     />
                     <span
-                      title={`${info.label}: вес ${weights[participant.position]}`}
+                      title={`${info?.label ?? participant.position}: вес ${weightOfPosition(participant.position, settings)}`}
                       className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     >
-                      {info.short} · {weights[participant.position]}
+                      {info?.short ?? '?'} · {weightOfPosition(participant.position, settings)}
                     </span>
                   </div>
                 </td>

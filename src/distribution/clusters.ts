@@ -1,4 +1,4 @@
-import type { Position } from '@/domain/positions'
+import { weightOfPosition, type Position } from '@/domain/positions'
 import type { LevelCapRule, Participant, Rule, SeparateRule, Settings, TogetherRule } from '@/domain/types'
 
 /** Атомарная единица распределения: одиночный участник или связанная группа */
@@ -34,7 +34,7 @@ export function buildClusters(
   const caps = activeRules.filter((rule): rule is LevelCapRule => rule.type === 'level-cap')
 
   const positionOf = new Map(participants.map((p) => [p.id, p.position]))
-  const weightOf = new Map(participants.map((p) => [p.id, settings.weights[p.position]]))
+  const weightOf = new Map(participants.map((p) => [p.id, weightOfPosition(p.position, settings)]))
 
   /* Union-find по правилам «вместе» */
   const parent = new Map<string, string>()

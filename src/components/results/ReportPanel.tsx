@@ -52,7 +52,8 @@ export function ReportPanel({ report, teams, onRenameTeam }: ReportPanelProps) {
                       <EditableTeamName
                         value={nameOf(balance.teamId)}
                         onRename={onRenameTeam ? (name) => onRenameTeam(balance.teamId, name) : undefined}
-                        /* инпут выше текста на рамку+паддинги — компенсируем, чтобы строка не прыгала */
+                        /* в таблице имя одной строкой — обрезаем многоточием */
+                        buttonClassName="truncate"
                         inputClassName="-my-[3px]"
                       />
                     </span>

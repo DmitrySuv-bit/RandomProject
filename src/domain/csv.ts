@@ -1,15 +1,32 @@
-import { isPosition, type Position } from './positions'
+import { isPosition, type CustomPosition, type Position } from './positions'
 import type { ParticipantInput } from './types'
 
 /** Должность по умолчанию, если в CSV она не указана или не распознана */
 export const FALLBACK_POSITION: Position = 'junior-minus'
 
+/** Точное совпадение с названием пользовательской должности (без учёта регистра) */
+function matchCustomPosition(raw: string, customPositions: readonly CustomPosition[]): Position | null {
+  const normalized = raw.toLowerCase().replace(/ё/g, 'е').trim()
+  if (!normalized) return null
+  const match = customPositions.find(
+    (p) => p.label.toLowerCase().replace(/ё/g, 'е').trim() === normalized,
+  )
+  return match ? match.id : null
+}
+
 /**
  * Толерантное распознавание должности:
  * «Junior plus», «junior+», «джун минус», «мидл+», «senior −» и т.п.
- * Возвращает null, если уровень или модификатор определить не удалось.
+ * Сначала точное совпадение с пользовательской должностью, затем встроенные.
+ * Возвращает null, если определить не удалось.
  */
-export function parsePositionValue(raw: string): Position | null {
+export function parsePositionValue(
+  raw: string,
+  customPositions: readonly CustomPosition[] = [],
+): Position | null {
+  const custom = matchCustomPosition(raw, customPositions)
+  if (custom) return custom
+
   const s = raw.toLowerCase().replace(/ё/g, 'е').trim()
   if (!s) return null
 
@@ -52,8 +69,12 @@ function looksLikeHeader(cells: string[]): boolean {
  * Разбор CSV со списком участников.
  * Формат строки: «ФИО;Должность» (или через запятую). Должность можно опустить.
  * Кавычки по RFC не разбираются — ФИО с разделителем внутри не поддерживается.
+ * Должность ищется среди встроенных (толерантно) и пользовательских (по названию).
  */
-export function parseParticipantsCsv(text: string): CsvImportResult {
+export function parseParticipantsCsv(
+  text: string,
+  customPositions: readonly CustomPosition[] = [],
+): CsvImportResult {
   const lines = text.split(/\r?\n/)
   const result: CsvImportResult = { rows: [], unrecognizedPosition: [], skippedLines: 0 }
 
@@ -81,7 +102,7 @@ export function parseParticipantsCsv(text: string): CsvImportResult {
       continue
     }
 
-    const position = parsePositionValue(positionRaw)
+    const position = parsePositionValue(positionRaw, customPositions)
     if (position) {
       result.rows.push({ fullName, position })
     } else {

@@ -28,6 +28,20 @@ describe('parsePositionValue', () => {
   ])('не распознаёт «%s» (%s)', (raw) => {
     expect(parsePositionValue(raw)).toBeNull()
   })
+
+  it('распознаёт пользовательскую должность по названию (без учёта регистра)', () => {
+    const custom = [
+      { id: 'c1', label: 'Тимлид', short: 'ТИМ', weight: 7 },
+      { id: 'c2', label: 'QA', short: 'QA', weight: 2 },
+    ]
+    expect(parsePositionValue('Тимлид', custom)).toBe('c1')
+    expect(parsePositionValue('  тимлид  ', custom)).toBe('c1')
+    expect(parsePositionValue('qa', custom)).toBe('c2')
+    // встроенные по-прежнему работают
+    expect(parsePositionValue('Junior plus', custom)).toBe('junior-plus')
+    // неизвестная — null
+    expect(parsePositionValue('DevOps', custom)).toBeNull()
+  })
 })
 
 describe('parseParticipantsCsv', () => {

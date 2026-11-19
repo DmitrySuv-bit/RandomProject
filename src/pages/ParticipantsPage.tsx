@@ -15,6 +15,7 @@ interface ImportSummary {
 
 export function ParticipantsPage() {
   const participants = useAppStore((s) => s.participants)
+  const settings = useAppStore((s) => s.settings)
   const addParticipants = useAppStore((s) => s.addParticipants)
   const regenerateAllNicknames = useAppStore((s) => s.regenerateAllNicknames)
 
@@ -22,7 +23,7 @@ export function ParticipantsPage() {
 
   const handleCsvFile = async (file: File) => {
     const text = await file.text()
-    const parsed = parseParticipantsCsv(text)
+    const parsed = parseParticipantsCsv(text, settings.customPositions)
     const added = addParticipants(parsed.rows)
     setImportSummary({
       added,

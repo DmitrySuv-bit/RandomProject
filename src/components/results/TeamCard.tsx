@@ -11,13 +11,24 @@ interface TeamCardProps {
   index: number
   balance: TeamBalance | undefined
   participantsById: ReadonlyMap<string, Participant>
-  weights: Record<Position, number>
+  /** Вес должности (встроенной или пользовательской) */
+  weightOf: (position: Position) => number
+  /** Подсвеченные поиском участники */
+  highlightedIds?: ReadonlySet<string>
   /** Переименование команды (не передан — название статичное) */
   onRename?: (name: string) => void
 }
 
 /** Карточка команды: номер, название, баланс и перетаскиваемые участники */
-export function TeamCard({ team, index, balance, participantsById, weights, onRename }: TeamCardProps) {
+export function TeamCard({
+  team,
+  index,
+  balance,
+  participantsById,
+  weightOf,
+  highlightedIds,
+  onRename,
+}: TeamCardProps) {
   const { setNodeRef, isOver } = useDroppable({ id: team.id })
 
   const count = balance?.count ?? team.memberIds.length
@@ -38,7 +49,12 @@ export function TeamCard({ team, index, balance, participantsById, weights, onRe
           <TeamBadge index={index} className="h-7 w-7 text-sm shadow-sm" />
           <h3 className="min-w-0 flex-1 text-lg font-bold leading-7 text-slate-900 dark:text-white">
             {/* инпут выше текста на рамку+паддинги — компенсируем, чтобы карточка не прыгала */}
-            <EditableTeamName value={team.name} onRename={onRename} inputClassName="-my-[3px]" />
+            <EditableTeamName
+              value={team.name}
+              onRename={onRename}
+              inputClassName="-my-[3px]"
+              buttonClassName="break-words"
+            />
           </h3>
         </div>
         <span
@@ -59,7 +75,14 @@ export function TeamCard({ team, index, balance, participantsById, weights, onRe
           {team.memberIds.map((id) => {
             const participant = participantsById.get(id)
             if (!participant) return null
-            return <ParticipantChip key={id} participant={participant} weight={weights[participant.position]} />
+            return (
+              <ParticipantChip
+                key={id}
+                participant={participant}
+                weight={weightOf(participant.position)}
+                highlighted={highlightedIds?.has(id)}
+              />
+            )
           })}
         </ul>
       )}
